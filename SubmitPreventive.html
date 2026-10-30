@@ -1,0 +1,919 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Preventive - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+    #reader video { object-fit: cover; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+    <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-100 block">
+        <div class="flex justify-center w-full max-w-2xl space-x-8 border-b border-gray-200 shrink-0 overflow-x-auto pb-1 mx-auto">
+          <button id="tab-btn-warehouse" onclick="switchArrivalTab('warehouse')" class="pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors whitespace-nowrap">
+              <i class='bx bx-buildings mr-1'></i> Submission Form
+          </button>
+          <button id="tab-btn-workshop" onclick="switchArrivalTab('workshop')" class="pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap">
+              <i class='bx bx-wrench mr-1'></i> Machine Map
+          </button>
+      </div>
+
+      <!-- Container Machine Map -->
+      <div id="content-workshop" class="hidden bg-white p-5 md:p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-4xl mt-4 mx-auto text-left overflow-hidden">
+          <div class="mb-5">
+              <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Area</label>
+              <select id="areaSelect" onchange="handleAreaChange()" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-gray-800 bg-gray-50 cursor-pointer">
+                  <option value="" disabled selected>-- Pilih Area --</option>
+                  <option value="Cutting">Cutting</option>
+                  <option value="Stockfit">Stockfit</option>
+                  <option value="Stiching">Stiching</option>
+                  <option value="Assembling">Assembling</option>
+              </select>
+          </div>
+
+          <div id="mapContainer" class="hidden mb-5">
+              <!-- Tab Layout 2D dan 3D -->
+              <div class="flex space-x-6 border-b border-gray-200 mb-4">
+                  <button type="button" onclick="document.getElementById('layout-2d').classList.remove('hidden'); document.getElementById('layout-3d').classList.add('hidden'); this.classList.add('border-indigo-500', 'text-indigo-600'); this.classList.remove('border-transparent', 'text-gray-500'); this.nextElementSibling.classList.add('border-transparent', 'text-gray-500'); this.nextElementSibling.classList.remove('border-indigo-500', 'text-indigo-600');" class="pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors whitespace-nowrap">
+                      Layout 2D
+                  </button>
+                  <button type="button" onclick="document.getElementById('layout-3d').classList.remove('hidden'); document.getElementById('layout-2d').classList.add('hidden'); this.classList.add('border-indigo-500', 'text-indigo-600'); this.classList.remove('border-transparent', 'text-gray-500'); this.previousElementSibling.classList.add('border-transparent', 'text-gray-500'); this.previousElementSibling.classList.remove('border-indigo-500', 'text-indigo-600');" class="pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap">
+                      Layout 3D
+                  </button>
+              </div>
+              
+              <!-- Konten Layout 2D (Asli) -->
+              <div id="layout-2d" class="block">
+                  <img id="mapImage" src="" alt="Layout Area" class="w-full rounded-xl border border-gray-200 shadow-sm mb-5">
+              </div>
+              
+              <!-- Konten Layout 3D (Iframe) -->
+              <div id="layout-3d" class="hidden mb-5 h-[600px] w-full">
+                  <iframe src="http://10.18.128.80:3001/" class="w-full h-full rounded-xl border border-gray-200 shadow-sm"></iframe>
+              </div>
+              
+              <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Zona</label>
+              <select id="zoneSelect" onchange="handleZoneChange()" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-gray-800 bg-gray-50 cursor-pointer mb-5">
+                  <option value="" disabled selected>-- Pilih Zona --</option>
+                  <!-- Options otomatis diisi lewat JavaScript berdasarkan Location -->
+              </select>
+
+              <label class="block text-sm font-bold text-gray-700 mb-2">Cari Mesin</label>
+              <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                      <i class='bx bx-search text-gray-400 text-lg'></i>
+                  </div>
+                  <input type="text" id="machineSearch" oninput="handleZoneChange()" placeholder="Ketik nama mesin, nomor asset, atau brand..." class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-gray-800 bg-gray-50">
+              </div>
+          </div>
+
+          <div id="machineTableContainer" class="hidden overflow-x-auto mt-5">
+              <table class="w-full text-sm text-left text-gray-500 border border-gray-200 rounded-xl overflow-hidden whitespace-nowrap">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                      <tr>
+                          <th class="px-4 py-3 text-center">Schedule</th>
+                          <th class="px-4 py-3">Asset Number</th>
+                          <th class="px-4 py-3">Machine Name</th>
+                          <th class="px-4 py-3">Brand</th>
+                          <th class="px-4 py-3">Machine Type</th>
+                          <th class="px-4 py-3">Area</th>
+                          <th class="px-4 py-3">Zona</th>
+                          <th class="px-4 py-3">Department</th>
+                      </tr>
+                  </thead>
+                  <tbody id="machineTableBody">
+                      <!-- Baris tabel diisi via JS -->
+                  </tbody>
+              </table>
+          </div>
+      </div>
+
+      <div id="content-warehouse" class="bg-white p-5 md:p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-2xl mt-4 relative overflow-hidden mx-auto">
+        
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-blue-500"></div>
+
+        <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-100 text-blue-500 p-2.5 rounded-lg">
+                    <i class='bx bx-calendar-plus text-3xl'></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Preventive Submission Form</h2>
+                    <p class="text-sm text-gray-500">Preventive Maintenance Schedule Form</p>
+                </div>
+            </div>
+            <a href="Preventive.html" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                <i class='bx bx-x text-3xl'></i>
+            </a>
+        </div>
+
+        <form onsubmit="event.preventDefault(); handleFormSubmit(event); return false;">
+
+          
+          
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Scanner QR Code (Asset ID / Machine ID)</label>
+            <div id="reader" class="w-full bg-gray-900 rounded-xl overflow-hidden border-2 border-blue-500 mb-3 min-h-[200px] flex items-center justify-center"></div>
+            <div class="flex gap-2">
+                <button type="button" onclick="startScanner()" class="bg-blue-500 text-white text-xs px-4 py-1.5 rounded hover:bg-blue-600 transition-colors shadow-md"><i class='bx bx-video mr-1'></i> Start Scanner</button>
+                <button type="button" onclick="stopScanner()" class="bg-gray-500 text-white text-xs px-4 py-1.5 rounded hover:bg-gray-600 transition-colors shadow-md"><i class='bx bx-video-off mr-1'></i> Stop</button>
+            </div>
+          </div>
+
+          <div class="mb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Asset ID</label>
+                <input type="text" id="asset_id" placeholder="Scan or type Asset ID..." required oninput="checkAssetId()"
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Name ID</label>
+                <input type="text" id="name_id" placeholder="Auto-filled Name..." readonly 
+                       class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-gray-600 bg-gray-200 cursor-not-allowed font-medium">
+              </div>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Inspection / Maintenance Category</label>
+            <select id="kategori" required 
+                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white cursor-pointer appearance-none">
+              <option value="" disabled selected>-- Select Category --</option>
+              <option value="Lubrication">Lubrication (Oil/Grease)</option>
+              <option value="Calibration">Calibration / Reset</option>
+              <option value="Cleaning">Internal Component Cleaning</option>
+              <option value="Inspection">Sound/Vibration Anomaly Inspection</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Maintenance Dates</label>
+            <button type="button" onclick="openScheduleModal()" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 bg-gray-50 hover:bg-gray-100 text-left text-gray-600 flex justify-between items-center transition-all shadow-sm">
+                <span><i class='bx bx-calendar-plus mr-2 text-blue-500'></i>Select Schedule (Daily/Weekly)...</span>
+                <i class='bx bx-chevron-right text-xl'></i>
+            </button>
+            <div id="selected-dates" class="flex flex-wrap gap-2 mt-3"></div>
+          </div>
+
+          <button type="submit" 
+                  class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center mt-3">
+            <i class='bx bx-send mr-2'></i> Submit Preventive Schedule
+          </button>
+        </form>
+
+      </div>
+    </main>
+
+    <div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
+        <div class="bg-white rounded-2xl shadow-xl w-[480px] max-w-[95%] overflow-hidden flex flex-col transform transition-all scale-95" id="schedule-modal-box">
+            <div class="bg-blue-500 px-6 py-4 flex justify-between items-center text-white">
+                <h3 class="font-bold text-lg"><i class='bx bx-calendar-edit mr-2'></i>Set Recurring Schedule</h3>
+                <button type="button" onclick="closeScheduleModal()" class="text-white hover:text-blue-200 transition-colors"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <div class="p-6 flex flex-col sm:flex-row gap-6">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Start Date</label>
+                    <input type="date" id="modal-start-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500 bg-gray-50 text-gray-700 cursor-pointer">
+                </div>
+                <div class="w-full sm:w-48 sm:border-l sm:border-gray-100 sm:pl-6 border-t border-gray-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Frequency</label>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="radio" name="freq" value="daily" checked class="w-4 h-4 text-blue-500 focus:ring-blue-500 cursor-pointer">
+                            <span class="text-sm font-medium text-gray-700 group-hover:text-blue-600">1 Day</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="radio" name="freq" value="weekly" class="w-4 h-4 text-blue-500 focus:ring-blue-500 cursor-pointer">
+                            <span class="text-sm font-medium text-gray-700 group-hover:text-blue-600">1 Month</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                <button type="button" onclick="closeScheduleModal()" class="px-5 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 text-sm transition-colors">Cancel</button>
+                <button type="button" onclick="generateSchedule()" class="px-5 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 text-sm shadow-sm transition-colors">Generate Dates</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Kalender Khusus Mesin -->
+    <div id="machineCalendarModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[70]">
+        <div class="bg-white rounded-2xl shadow-xl w-[400px] max-w-[95%] overflow-hidden flex flex-col transform transition-all scale-95" id="machine-calendar-box">
+            <div class="bg-indigo-500 px-6 py-4 flex justify-between items-center text-white">
+                <div>
+                    <h3 class="font-bold text-lg"><i class='bx bx-calendar mr-2'></i>Jadwal Maintenance</h3>
+                    <p id="calendar-machine-name" class="text-xs text-indigo-100 font-medium">Asset ID: -</p>
+                </div>
+                <button type="button" onclick="closeMachineCalendar()" class="text-white hover:text-indigo-200 transition-colors"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <div class="p-5">
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Kategori Maintenance</label>
+                    <select id="calendar-kategori" onchange="toggleCustomKategori()" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none text-gray-700 bg-gray-50 text-sm">
+                      <option value="" disabled selected>-- Pilih Kategori --</option>
+                      <option value="Lubrication">Lubrication (Oil/Grease)</option>
+                      <option value="Calibration">Calibration / Reset</option>
+                      <option value="Cleaning">Internal Component Cleaning</option>
+                      <option value="Inspection">Sound/Vibration Anomaly Inspection</option>
+                      <option value="Others">Others</option>
+                    </select>
+                    <!-- Input text tersembunyi yang muncul jika "Others" dipilih -->
+                    <input type="text" id="calendar-kategori-custom" placeholder="Ketik deskripsi maintenance di sini..." class="hidden w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none text-gray-700 bg-gray-50 text-sm mt-3">
+                </div>
+                <div class="flex justify-between items-center mb-4 border-t border-gray-100 pt-4">
+                    <button onclick="changeCalendarMonth(-1)" class="p-1 hover:bg-gray-100 rounded text-gray-600"><i class='bx bx-chevron-left text-2xl'></i></button>
+                    <h4 id="calendar-month-year" class="font-bold text-gray-700">Bulan Tahun</h4>
+                    <button onclick="changeCalendarMonth(1)" class="p-1 hover:bg-gray-100 rounded text-gray-600"><i class='bx bx-chevron-right text-2xl'></i></button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-500 mb-2">
+                    <div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center">
+                    <!-- Kotakan Tanggal akan di-generate via JS -->
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                <span class="text-xs text-gray-500 font-bold"><span id="calendar-selected-count" class="text-indigo-600 text-lg">0</span> Hari Dipilih</span>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeMachineCalendar()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 text-sm transition-colors">Batal</button>
+                    <button type="button" id="btn-save-calendar" onclick="saveMachineCalendar()" class="px-4 py-2 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 text-sm shadow-sm transition-colors">Simpan Jadwal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let masterAssets = [];
+    let html5QrCode;
+    let isProcessingQR = false; 
+
+    function toggleSubmenu(id, element) {
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'AssetManagement.html' && link.getAttribute('href') === 'AssetManagement.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+    async function fetchAssets() {
+        try {
+            const res = await fetch('/api/assets');
+            if(res.ok) { masterAssets = await res.json(); }
+        } catch (err) {
+            masterAssets = JSON.parse(localStorage.getItem('cmms_assets')) || [];
+        }
+    }
+
+    function checkAssetId() {
+        const assetInput = document.getElementById('asset_id').value.trim().toLowerCase();
+        const nameInput = document.getElementById('name_id');
+
+        if (!assetInput) {
+            nameInput.value = "";
+            return;
+        }
+
+        // PERBAIKAN PENCARIAN (Mencari Nomor Asset ATAU Machine ID)
+        const asset = masterAssets.find(a => {
+            let dbNomor = a.nomor_asset ? String(a.nomor_asset).trim().toLowerCase() : "";
+            let dbMachineId = a.machine_id ? String(a.machine_id).trim().toLowerCase() : "";
+            return dbNomor === assetInput || dbMachineId === assetInput;
+        });
+        
+        if (asset) {
+            // Seragamkan inputan menjadi Nomor Asset Utama agar data yang tersimpan seragam
+            document.getElementById('asset_id').value = asset.nomor_asset || assetInput;
+
+            let mName = asset.machine_name || "";
+            if (!mName || mName.trim() === "" || mName.trim() === "-") {
+                nameInput.value = "Mesin Ditemukan (Tanpa Nama)";
+            } else {
+                nameInput.value = mName;
+            }
+        } else {
+            nameInput.value = "Asset Not Found";
+        }
+    }
+
+    function startScanner() {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        
+        if (html5QrCode.isScanning) return; 
+        isProcessingQR = false; 
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                if (isProcessingQR) return; 
+                isProcessingQR = true; 
+
+                document.getElementById('asset_id').value = decodedText;
+                checkAssetId();
+                stopScanner();
+                Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'QR Code Terbaca!' });
+            },
+            (errorMessage) => { /* abaikan error per frame */ }
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                isProcessingQR = false; 
+            }).catch(err => {
+                console.error("Stop failed", err);
+            });
+        }
+    }
+
+    // -- LOGIC SCHEDULE BARU SESUAI PERMINTAAN --
+    let dateArray = [];
+
+    function openScheduleModal() {
+        const modal = document.getElementById('scheduleModal');
+        const box = document.getElementById('schedule-modal-box');
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        document.getElementById('modal-start-date').value = `${y}-${m}-${d}`;
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeScheduleModal() {
+        const modal = document.getElementById('scheduleModal');
+        const box = document.getElementById('schedule-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function generateSchedule() {
+        const startDateStr = document.getElementById('modal-start-date').value;
+        if(!startDateStr) {
+            Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Silakan pilih tanggal awal terlebih dahulu!', confirmButtonColor: '#3b82f6' });
+            return;
+        }
+
+        const freq = document.querySelector('input[name="freq"]:checked').value;
+        const [yStr, mStr, dStr] = startDateStr.split('-');
+        const startDate = new Date(yStr, mStr - 1, dStr);
+        let generatedDates = [];
+
+        if (freq === 'daily') {
+            generatedDates.push(startDateStr); 
+        } else if (freq === 'weekly') {
+            const targetMonth = startDate.getMonth(); 
+            let d = new Date(startDate); 
+
+            while (d.getMonth() === targetMonth) {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                generatedDates.push(`${y}-${m}-${dd}`);
+                
+                d.setDate(d.getDate() + 7);
+            }
+        }
+
+        let addedCount = 0;
+        generatedDates.forEach(date => {
+            if (!dateArray.includes(date)) {
+                dateArray.push(date);
+                addedCount++;
+            }
+        });
+
+        dateArray.sort((a, b) => new Date(a) - new Date(b));
+        renderDates();
+        closeScheduleModal();
+
+        if(addedCount > 0) {
+            Swal.fire({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true,
+                icon: 'success', title: `${addedCount} tanggal berhasil ditambahkan`
+            });
+        } else {
+             Swal.fire({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true,
+                icon: 'info', title: `Tanggal tersebut sudah ada di daftar`
+            });
+        }
+    }
+
+    function removeDate(date) {
+        dateArray = dateArray.filter(d => d !== date);
+        renderDates();
+    }
+
+    function renderDates() {
+        const container = document.getElementById('selected-dates');
+        container.innerHTML = "";
+        dateArray.forEach(d => {
+            container.innerHTML += `
+                <span class="inline-flex items-center bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1.5 rounded-lg shadow-sm border border-blue-200">
+                    <i class='bx bx-calendar-check mr-1.5'></i> ${d} 
+                    <button type="button" onclick="removeDate('${d}')" class="ml-2 bg-white text-blue-500 hover:text-white hover:bg-red-500 rounded-full w-5 h-5 flex items-center justify-center font-bold transition-colors">Ã¢Å“â€¢</button>
+                </span>`;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadSidebar();
+            // 1. TAMPILKAN USER DINAMIS
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          
+          // Output gambar dikonversi menjadi URL Cloudinary
+          let profilePic = userData.profile_picture;
+          if (profilePic && !profilePic.startsWith('http')) {
+              profilePic = `https://res.cloudinary.com/bfvxjarw/image/upload/v1/${profilePic}`;
+          }
+          document.getElementById('header-avatar').src = profilePic || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+
+
+      const maintenanceSubmenu = document.getElementById('submenu-maintenance');
+      if (maintenanceSubmenu) {
+          maintenanceSubmenu.classList.remove('hidden'); maintenanceSubmenu.classList.add('block');
+          maintenanceSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+      }
+
+      await fetchAssets();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const scannedAssetId = urlParams.get('asset_id');
+      if(scannedAssetId) {
+          const assetInput = document.getElementById('asset_id');
+          assetInput.value = scannedAssetId;
+          checkAssetId();
+      }
+
+      startScanner(); 
+    });
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        
+        if(dateArray.length === 0) {
+            Swal.fire({ icon: 'warning', title: 'Attention', text: 'Please add at least one Maintenance Date.', confirmButtonColor: '#3b82f6' });
+            return;
+        }
+
+        const nameInput = document.getElementById('name_id').value;
+        if(nameInput === "Asset Not Found") {
+            Swal.fire({ icon: 'warning', title: 'Data Tidak Valid', text: 'The asset number was not found in the master database.', confirmButtonColor: '#3b82f6' });
+            return;
+        }
+
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin mr-2'></i> Processing...";
+        btn.classList.add('opacity-80', 'cursor-not-allowed');
+        btn.disabled = true;
+
+        const formData = new FormData();
+        // Perbaikan kesalahan jam dengan memaksa zona waktu menjadi Waktu Indonesia Barat (WIB)[cite: 1]
+        const submitDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
+        
+        let datetime = `${submitDate.getFullYear()}-${String(submitDate.getMonth() + 1).padStart(2, '0')}-${String(submitDate.getDate()).padStart(2, '0')} ${String(submitDate.getHours()).padStart(2, '0')}:${String(submitDate.getMinutes()).padStart(2, '0')}:${String(submitDate.getSeconds()).padStart(2, '0')}`;
+        const userData = JSON.parse(localStorage.getItem('userData'));
+        formData.append('user_name', userData ? userData.name : '');
+        formData.append('asset_id', document.getElementById('asset_id').value);
+        formData.append('kategori', document.getElementById('kategori').value);
+        formData.append('issue_desc', document.getElementById('kategori').value);
+        formData.append('datetime', datetime);
+        formData.append('dates', JSON.stringify(dateArray));
+
+        try {
+            const res = await fetch('/api/preventive', { method: 'POST', body: formData });
+            
+            if(res.ok) {
+                const assetIdVal = document.getElementById('asset_id').value;
+                const assetData = masterAssets.find(a => (a.nomor_asset && String(a.nomor_asset).trim().toLowerCase() === assetIdVal.toLowerCase()) || (a.machine_id && String(a.machine_id).trim().toLowerCase() === assetIdVal.toLowerCase()));
+                const area = assetData && assetData.area ? assetData.area : '-';
+                const lokasi = assetData && assetData.location ? assetData.location : '-';
+                
+                const reportHtml = `
+                    <div class="text-center mb-6">
+                        <i class='bx bx-check-circle text-6xl text-blue-500 mb-3'></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Submit Berhasil!</h2>
+                        <p class="text-gray-500">Jadwal Preventive Maintenance telah direkam.</p>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 text-left space-y-3 text-sm">
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Work Order</span><span class="col-span-2 font-bold text-gray-800">: (Dibuat Otomatis oleh Sistem)</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Waktu Pengajuan</span><span class="col-span-2 font-bold text-gray-800">: ${datetime}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Nama Mesin</span><span class="col-span-2 font-bold text-gray-800">: ${document.getElementById('name_id').value}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Nomor Asset</span><span class="col-span-2 font-bold text-gray-800">: ${assetIdVal}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Area / Lokasi</span><span class="col-span-2 font-bold text-gray-800">: ${area} / ${lokasi}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Maintenance</span><span class="col-span-2 font-bold text-blue-600">: Preventive</span></div>
+                        <div class="grid grid-cols-3 pb-2"><span class="text-gray-500 font-medium">Inspection</span><span class="col-span-2 font-bold text-blue-500">: ${document.getElementById('kategori').value}</span></div>
+                    </div>
+                    <button onclick="window.location.href='Schedule.html'" class="mt-6 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md">
+                        Selesai & Kembali ke Schedule
+                    </button>
+                `;
+                btn.closest('form').parentElement.innerHTML = reportHtml;
+            } else {
+                const errData = await res.json();
+                Swal.fire({ icon: 'error', title: 'Error DB', text: errData.error || "Failed to save the schedule.", confirmButtonColor: '#3b82f6' });
+                resetBtn(btn);
+            }
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Database not running.', confirmButtonColor: '#3b82f6' });
+            resetBtn(btn);
+        }
+    }
+    
+    function resetBtn(btn) {
+        btn.innerHTML = "<i class='bx bx-send mr-2'></i> Submit Preventive Schedule";
+        btn.classList.remove('opacity-80', 'cursor-not-allowed');
+        btn.disabled = false;
+    }
+
+    function switchArrivalTab(tab) {
+        const btnWarehouse = document.getElementById('tab-btn-warehouse');
+        const btnWorkshop = document.getElementById('tab-btn-workshop');
+        const contentWarehouse = document.getElementById('content-warehouse');
+        const contentWorkshop = document.getElementById('content-workshop');
+
+        if (tab === 'warehouse') {
+            btnWarehouse.className = "pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors whitespace-nowrap";
+            btnWorkshop.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap";
+            contentWarehouse.classList.remove('hidden');
+            contentWorkshop.classList.add('hidden');
+        } else if (tab === 'workshop') {
+            btnWorkshop.className = "pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors whitespace-nowrap";
+            btnWarehouse.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap";
+            contentWarehouse.classList.add('hidden');
+            contentWorkshop.classList.remove('hidden');
+        }
+    }
+
+    function getZoneName(location) {
+        if (!location || location === '-') return null;
+        const str = String(location).trim();
+        
+        // 1. Cari pola "Zona X"
+        const zonaMatch = str.match(/Zona\s*(\d+)/i);
+        if (zonaMatch) return `Zona ${zonaMatch[1]}`;
+        
+        // 2. Jika tidak ada "Zona" tapi ada "Line X", ubah otomatis jadi "Zona X"
+        const lineMatch = str.match(/Line\s*(\d+)/i);
+        if (lineMatch) return `Zona ${lineMatch[1]}`;
+        
+        return str;
+    }
+
+    function handleAreaChange() {
+        const area = document.getElementById('areaSelect').value;
+        const mapContainer = document.getElementById('mapContainer');
+        const mapImage = document.getElementById('mapImage');
+        const zoneSelect = document.getElementById('zoneSelect');
+        const machineSearch = document.getElementById('machineSearch');
+        const machineTableContainer = document.getElementById('machineTableContainer');
+
+        if (area) {
+            mapContainer.classList.remove('hidden');
+            machineTableContainer.classList.add('hidden');
+            if (machineSearch) machineSearch.value = ''; // Reset kotak pencarian
+            
+            // Set foto layout secara spesifik untuk masing-masing area
+            if (area.toLowerCase() === 'cutting') {
+                mapImage.src = '/uploads/layout_cutting.jpg'; // Pastikan nama file sesuai dengan yang ada di folder uploads
+            } else if (area.toLowerCase() === 'stockfit') {
+                mapImage.src = '/uploads/layout_stockfit.jpg'; 
+            } else if (area.toLowerCase() === 'stiching') {
+                mapImage.src = '/uploads/layout_stiching.jpg'; 
+            } else if (area.toLowerCase() === 'assembling') {
+                mapImage.src = '/uploads/layout_assembling.jpg'; 
+            } else {
+                mapImage.src = ''; 
+            }
+
+            // Filter zone/location dari masterAssets berdasarkan Area
+            const filteredAssets = masterAssets.filter(a => a.area && a.area.toLowerCase() === area.toLowerCase());
+            
+            // Ekstrak nama Zona menggunakan fungsi pembantu
+            const uniqueZones = [...new Set(filteredAssets.map(a => getZoneName(a.location)).filter(Boolean))];
+
+            // Sortir agar berurutan (Zona 1, Zona 2, dst)
+            uniqueZones.sort();
+
+            zoneSelect.innerHTML = '<option value="" disabled selected>-- Pilih Zona --</option>';
+            uniqueZones.forEach(zone => {
+                zoneSelect.innerHTML += `<option value="${zone}">${zone}</option>`;
+            });
+        }
+    }
+
+    function handleZoneChange() {
+        const area = document.getElementById('areaSelect').value;
+        const zone = document.getElementById('zoneSelect').value;
+        const searchKeyword = document.getElementById('machineSearch') ? document.getElementById('machineSearch').value.toLowerCase() : '';
+        const machineTableContainer = document.getElementById('machineTableContainer');
+        const machineTableBody = document.getElementById('machineTableBody');
+
+        if (area && zone) {
+            machineTableContainer.classList.remove('hidden');
+            machineTableBody.innerHTML = '';
+
+            const filteredAssets = masterAssets.filter(a => {
+                if (!a.area || !a.location) return false;
+                
+                const areaMatch = a.area.toLowerCase() === area.toLowerCase();
+                const aZone = getZoneName(a.location);
+                const zoneMatch = aZone && aZone.toLowerCase() === zone.toLowerCase();
+                
+                let searchMatch = true;
+                if (searchKeyword) {
+                    const mName = (a.machine_name || '').toLowerCase();
+                    const mAsset = (a.nomor_asset || '').toLowerCase();
+                    const mBrand = (a.brand || '').toLowerCase();
+                    searchMatch = mName.includes(searchKeyword) || mAsset.includes(searchKeyword) || mBrand.includes(searchKeyword);
+                }
+                
+                return areaMatch && zoneMatch && searchMatch;
+            });
+
+            if (filteredAssets.length === 0) {
+                machineTableBody.innerHTML = `<tr><td colspan="8" class="px-4 py-3 text-center text-gray-500">Tidak ada mesin di zona ini</td></tr>`;
+            } else {
+                filteredAssets.forEach(a => {
+                    const assetId = a.nomor_asset || a.machine_id || '';
+                    machineTableBody.innerHTML += `
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="px-4 py-3 text-center">
+                                <button onclick="openMachineCalendar('${assetId}')" class="bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition-colors shadow-sm">
+                                    <i class='bx bx-calendar-plus'></i> Set Jadwal
+                                </button>
+                            </td>
+                            <td class="px-4 py-3 font-medium text-gray-800">${a.nomor_asset || '-'}</td>
+                            <td class="px-4 py-3">${a.machine_name || '-'}</td>
+                            <td class="px-4 py-3">${a.brand || '-'}</td>
+                            <td class="px-4 py-3">${a.machine_type || '-'}</td>
+                            <td class="px-4 py-3">${a.area || '-'}</td>
+                            <td class="px-4 py-3">${a.location || '-'}</td>
+                            <td class="px-4 py-3">${a.department || '-'}</td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+    }
+
+    // -- LOGIC KALENDER SPESIFIK MESIN --
+    let currentCalendarDate = new Date();
+    let currentAssetForCalendar = '';
+    let selectedDatesForMachine = new Set(); // Menyimpan tanggal yang diceklis
+
+    function openMachineCalendar(assetId) {
+        currentAssetForCalendar = assetId;
+        document.getElementById('calendar-machine-name').innerText = `Asset ID: ${assetId}`;
+        
+        selectedDatesForMachine.clear(); // Reset pilihan kalender setiap buka mesin baru
+        document.getElementById('calendar-kategori').value = ""; // Reset kategori
+        
+        // Sembunyikan dan kosongkan input custom saat modal baru dibuka
+        const customInput = document.getElementById('calendar-kategori-custom');
+        customInput.value = "";
+        customInput.classList.add('hidden');
+        
+        renderCalendarGrid();
+        
+        const modal = document.getElementById('machineCalendarModal');
+        const box = document.getElementById('machine-calendar-box');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function toggleCustomKategori() {
+        const select = document.getElementById('calendar-kategori');
+        const customInput = document.getElementById('calendar-kategori-custom');
+        if (select.value === 'Others') {
+            customInput.classList.remove('hidden');
+            customInput.focus();
+        } else {
+            customInput.classList.add('hidden');
+            customInput.value = ''; // Bersihkan jika user batal memilih others
+        }
+    }
+
+    function closeMachineCalendar() {
+        const modal = document.getElementById('machineCalendarModal');
+        const box = document.getElementById('machine-calendar-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { 
+            modal.classList.add('hidden'); 
+            modal.classList.remove('flex');
+        }, 150);
+    }
+
+    function changeCalendarMonth(direction) {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+        renderCalendarGrid();
+    }
+
+    function renderCalendarGrid() {
+        const grid = document.getElementById('calendar-grid');
+        grid.innerHTML = '';
+        
+        const year = currentCalendarDate.getFullYear();
+        const month = currentCalendarDate.getMonth();
+        
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        document.getElementById('calendar-month-year').innerText = `${monthNames[month]} ${year}`;
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // Spasi kosong untuk awal bulan
+        for (let i = 0; i < firstDay; i++) {
+            grid.innerHTML += `<div class="p-2"></div>`;
+        }
+        
+        // Kotakan Tanggal Kalender
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            const isSelected = selectedDatesForMachine.has(dateStr);
+            
+            const baseClass = "p-2 rounded-lg cursor-pointer text-sm font-bold transition-all relative flex justify-center items-center h-10 w-full";
+            const colorClass = isSelected ? "bg-indigo-500 text-white shadow-md ring-2 ring-indigo-200" : "bg-gray-100 text-gray-700 hover:bg-indigo-100 hover:text-indigo-600";
+            const iconHTML = isSelected ? `<i class='bx bx-check absolute top-0 right-0 text-md bg-white text-indigo-500 rounded-full shadow-sm'></i>` : '';
+            
+            grid.innerHTML += `
+                <div onclick="toggleCalendarDate('${dateStr}')" class="${baseClass} ${colorClass}">
+                    ${i}
+                    ${iconHTML}
+                </div>
+            `;
+        }
+        
+        document.getElementById('calendar-selected-count').innerText = selectedDatesForMachine.size;
+    }
+
+    function toggleCalendarDate(dateStr) {
+        // Logika untuk memberikan tanda ceklis (toggle)
+        if (selectedDatesForMachine.has(dateStr)) {
+            selectedDatesForMachine.delete(dateStr);
+        } else {
+            selectedDatesForMachine.add(dateStr);
+        }
+        renderCalendarGrid(); // Render ulang kotakan tanggal
+    }
+
+    async function saveMachineCalendar() {
+        if(selectedDatesForMachine.size === 0) {
+            Swal.fire({ icon: 'info', title: 'Perhatian', text: 'Silakan klik tanggal di kalender terlebih dahulu.', confirmButtonColor: '#3b82f6' });
+            return;
+        }
+
+        let kategori = document.getElementById('calendar-kategori').value;
+        if(!kategori) {
+            Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Silakan pilih Kategori Maintenance terlebih dahulu.', confirmButtonColor: '#3b82f6' });
+            return;
+        }
+
+        // Ambil nilai dari isian teks jika user memilih "Others"
+        if (kategori === 'Others') {
+            const customKategori = document.getElementById('calendar-kategori-custom').value.trim();
+            if (!customKategori) {
+                Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Silakan ketik deskripsi maintenance pada kolom yang disediakan.', confirmButtonColor: '#3b82f6' });
+                return;
+            }
+            kategori = customKategori;
+        }
+
+        const btn = document.getElementById('btn-save-calendar');
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin mr-1'></i> Processing...";
+        btn.classList.add('opacity-80', 'cursor-not-allowed');
+        btn.disabled = true;
+
+        const dateArrayToSubmit = Array.from(selectedDatesForMachine);
+        dateArrayToSubmit.sort((a, b) => new Date(a) - new Date(b));
+
+        const submitDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
+        let datetime = `${submitDate.getFullYear()}-${String(submitDate.getMonth() + 1).padStart(2, '0')}-${String(submitDate.getDate()).padStart(2, '0')} ${String(submitDate.getHours()).padStart(2, '0')}:${String(submitDate.getMinutes()).padStart(2, '0')}:${String(submitDate.getSeconds()).padStart(2, '0')}`;
+        
+        const userData = JSON.parse(localStorage.getItem('userData'));
+        const formData = new FormData();
+        formData.append('user_name', userData ? userData.name : '');
+        formData.append('asset_id', currentAssetForCalendar);
+        formData.append('kategori', kategori);
+        formData.append('issue_desc', kategori);
+        formData.append('datetime', datetime);
+        formData.append('dates', JSON.stringify(dateArrayToSubmit));
+
+        try {
+            const res = await fetch('/api/preventive', { method: 'POST', body: formData });
+            if(res.ok) {
+                Swal.fire({
+                    icon: 'success', 
+                    title: 'Berhasil', 
+                    text: 'Jadwal Preventive langsung tersimpan ke Database!',
+                    confirmButtonColor: '#3b82f6'
+                }).then(() => {
+                    closeMachineCalendar();
+                });
+            } else {
+                const errData = await res.json();
+                Swal.fire({ icon: 'error', title: 'Error DB', text: errData.error || "Gagal menyimpan jadwal.", confirmButtonColor: '#3b82f6' });
+            }
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Server atau Database tidak merespon.', confirmButtonColor: '#3b82f6' });
+        } finally {
+            btn.innerHTML = "Simpan Jadwal";
+            btn.classList.remove('opacity-80', 'cursor-not-allowed');
+            btn.disabled = false;
+        }
+    }
+</script>
+<script src="gtranslate.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

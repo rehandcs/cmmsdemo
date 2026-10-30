@@ -1,0 +1,700 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Chatbot - CMMS AI Assistant</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            height: 85vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .sidebar-section {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .sidebar-section-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f0f4ff;
+        }
+
+        .upload-area:hover {
+            background: #e6ecff;
+            border-color: #764ba2;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .upload-text {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .documents-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .document-item {
+            padding: 10px;
+            margin: 5px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .document-item:hover {
+            background: #e6ecff;
+            border-color: #667eea;
+        }
+
+        .document-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .document-meta {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .clear-btn {
+            width: 100%;
+            padding: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .clear-btn:hover {
+            background: #c82333;
+        }
+
+        .stats {
+            padding: 15px;
+            background: #e6ecff;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        /* Main Content */
+        .main {
+            display: flex;
+            flex-direction: column;
+            background: white;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+        }
+
+        .message-sources {
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+            padding-left: 16px;
+        }
+
+        .source-item {
+            background: #f0f4ff;
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f0f4ff;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-btn:active {
+            transform: translateY(0);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: 100vh;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        .status-badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Error Toast */
+        .error-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 300px;
+            animation: slideInRight 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                ðŸ“š Knowledge Base
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Upload Dokumen</div>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">ðŸ“„</div>
+                    <div class="upload-text">Drag & drop atau klik untuk upload</div>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.xlsx,.html,.txt,.csv">
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Dokumen Terupload</div>
+                <div class="documents-list" id="documentsList"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Statistik</div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span>Total Dokumen:</span>
+                        <span id="totalDocs">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Total Chunks:</span>
+                        <span id="totalChunks">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Karakter:</span>
+                        <span id="totalChars">0</span>
+                    </div>
+                </div>
+                <button class="clear-btn" id="clearBtn">ðŸ—‘ï¸ Hapus Semua</button>
+            </div>
+        </div>
+
+        <!-- Main Chat -->
+        <div class="main">
+            <div class="chat-header">
+                <h1>ðŸ¤– CMMS AI Assistant</h1>
+                <p>Tanya tentang maintenance, asset management, dan spare parts</p>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="message assistant">
+                    <div class="message-content">
+                        Halo! ðŸ‘‹ Saya adalah AI Assistant untuk CMMS Anda. 
+                        <br><br>
+                        Anda bisa:
+                        <ul style="margin-top: 10px; margin-left: 20px;">
+                            <li>Upload dokumen (PDF, Excel, HTML, TXT)</li>
+                            <li>Tanya apapun tentang maintenance & asset</li>
+                            <li>Dapatkan rekomendasi untuk work orders</li>
+                        </ul>
+                        <br>
+                        Silakan mulai dengan upload dokumen di sisi kiri!
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="messageInput" placeholder="Ketik pertanyaan Anda...">
+                    <button class="send-btn" id="sendBtn">Kirim</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.CMMS_API_BASE || window.location.origin;
+        
+        // Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const documentsList = document.getElementById('documentsList');
+        const clearBtn = document.getElementById('clearBtn');
+        const totalDocsEl = document.getElementById('totalDocs');
+        const totalChunksEl = document.getElementById('totalChunks');
+        const totalCharsEl = document.getElementById('totalChars');
+
+        let conversationHistory = [];
+        let isLoading = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            loadStats();
+        });
+
+        function setupEventListeners() {
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.background = '#d6dcff';
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.background = '#f0f4ff';
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.background = '#f0f4ff';
+                handleFiles(e.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+            sendBtn.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            clearBtn.addEventListener('click', clearAllDocuments);
+        }
+
+        async function handleFiles(files) {
+            for (const file of files) {
+                if (!file.name.match(/\.(pdf|xlsx?|html?|txt|csv)$/i)) {
+                    showError(`Format ${file.name.split('.').pop()} tidak didukung`);
+                    continue;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    sendBtn.disabled = true;
+                    const response = await fetch(`${API_BASE}/api/rag/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json().catch(() => ({}));
+
+                    if (response.ok && data.success && data.response) {
+                        addSystemMessage(`âœ… Dokumen "${file.name}" berhasil diupload!\nðŸ“Š Chunks: ${data.data.chunksCount}`);
+                        loadStats();
+                    } else {
+                        showError(data.error);
+                    }
+                } catch (error) {
+                    showError(`Error upload: ${error.message}`);
+                } finally {
+                    sendBtn.disabled = false;
+                }
+            }
+
+            fileInput.value = '';
+        }
+
+        async function sendMessage() {
+            const query = messageInput.value.trim();
+            if (!query) return;
+
+            messageInput.value = '';
+            isLoading = true;
+            sendBtn.disabled = true;
+
+            // Add user message
+            addMessage(query, 'user');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/rag/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: query,
+                        conversationHistory: conversationHistory
+                    })
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.success && data.response) {
+                    // Add assistant response
+                    const messageEl = addMessage(data.response, 'assistant');
+
+                    // Add sources
+                    if (data.sources && data.sources.length > 0) {
+                        const sourcesDiv = document.createElement('div');
+                        sourcesDiv.className = 'message-sources';
+                        sourcesDiv.innerHTML = '<strong>ðŸ“š Sumber:</strong>';
+                        data.sources.forEach((source, idx) => {
+                            const sourceDiv = document.createElement('div');
+                            sourceDiv.className = 'source-item';
+                            sourceDiv.innerHTML = `
+                                <strong>Doc ${idx + 1}</strong> (${source.similarity})<br>
+                                ${source.text}
+                            `;
+                            sourcesDiv.appendChild(sourceDiv);
+                        });
+                        messageEl.appendChild(sourcesDiv);
+                    }
+
+                    // Track conversation
+                    conversationHistory.push(
+                        { role: 'user', content: query },
+                        { role: 'assistant', content: data.response }
+                    );
+
+                    // Add usage badge
+                    const badge = document.createElement('div');
+                    badge.className = 'status-badge success';
+                    badge.innerHTML = `âš¡ ${data.usage.totalTokens} tokens`;
+                    messageEl.appendChild(badge);
+                } else {
+                    showError(data.error || `Server chatbot merespons dengan status ${response.status}.`);
+                }
+            } catch (error) {
+                const detail = error instanceof Error ? error.message : String(error);
+                showError(detail === 'Failed to fetch' || detail.includes('NetworkError')
+                    ? 'Tidak dapat terhubung ke server CMMS. Pastikan backend berjalan, lalu coba lagi.'
+                    : `Chatbot gagal memproses pesan: ${detail}`);
+            } finally {
+                isLoading = false;
+                sendBtn.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        function addMessage(text, role) {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${role}`;
+
+            const contentEl = document.createElement('div');
+            contentEl.className = 'message-content';
+            const escapedText = String(text).replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+            contentEl.innerHTML = escapedText.replace(/\n/g, '<br>');
+
+            messageEl.appendChild(contentEl);
+            messagesContainer.appendChild(messageEl);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            return messageEl;
+        }
+
+        function addSystemMessage(text) {
+            const messageEl = addMessage(text, 'assistant');
+            const badge = document.createElement('div');
+            badge.className = 'status-badge success';
+            badge.textContent = 'âœ“ Sistem';
+            messageEl.appendChild(badge);
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/rag/stats`);
+                const data = await response.json();
+
+                if (data.success) {
+                    totalDocsEl.textContent = data.stats.documentCount;
+                    totalCharsEl.textContent = (data.stats.totalCharacters / 1000).toFixed(1) + 'K';
+                    // Estimate chunks (assume 256 chars per chunk)
+                    totalChunksEl.textContent = Math.ceil(data.stats.totalCharacters / 256);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function clearAllDocuments() {
+            if (!confirm('Yakin ingin menghapus SEMUA dokumen?')) return;
+
+            try {
+                sendBtn.disabled = true;
+                const response = await fetch(`${API_BASE}/api/rag/clear`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    addSystemMessage('ðŸ§¹ Semua dokumen telah dihapus');
+                    conversationHistory = [];
+                    loadStats();
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const toast = document.createElement('div');
+            toast.className = 'error-toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+    </script>
+</body>
+</html>

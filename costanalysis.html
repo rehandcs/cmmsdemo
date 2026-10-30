@@ -1,0 +1,910 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sparepart Management - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Smooth transition for sidebar */
+    #sidebar { transition: width 0.3s ease; }
+    
+    /* Collapsed sidebar class */
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    
+    /* Hide submenus when sidebar is collapsed */
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans min-h-screen flex overflow-auto relative">
+
+<aside id="sidebar" class="w-60 h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0 fixed md:relative inset-y-0 left-0 z-50 transform translate-x-0 transition-transform duration-300">
+  <div class="h-14 flex items-center px-4 border-b border-gray-200 bg-white header-sidebar justify-between md:justify-start">
+    <div class="flex items-center">
+      <i onclick="toggleSidebar()" class='bx bx-menu text-2xl text-gray-800 hover:text-orange-500 cursor-pointer transition-colors mr-3 hidden md:block'></i>
+    </div>
+    <!-- Tombol Tutup (Hanya tampil di Mobile) -->
+    <i onclick="toggleSidebar()" class='bx bx-x text-2xl text-gray-800 hover:text-red-500 cursor-pointer md:hidden'></i>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2 text-sm min-h-0" id="sidebar-nav">
+    <!-- Copass semua menu navigasi Anda di sini -->
+    <a href="Index.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200">
+      <i class='bx bx-home text-xl mr-3'></i> <span class="sidebar-text">Home</span>
+    </a>
+    <a href="Schedule.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-calendar text-xl mr-3'></i> <span class="sidebar-text">Schedule</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workorder', this)">
+        <div class="flex items-center"><i class='bx bx-book text-xl mr-3'></i> <span class="sidebar-text">Work Order</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workorder" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="WorkOrder.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-desktop text-lg mr-3'></i> <span class="sidebar-text">Live Dashboard</span>
+        </a>
+        <a href="TicketWO.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-task text-lg mr-3'></i> <span class="sidebar-text">Ticket Order</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-maintenance', this)">
+        <div class="flex items-center"><i class='bx bx-wrench text-xl mr-3'></i> <span class="sidebar-text">Maintenance</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+        <div id="submenu-maintenance" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+          <a href="Preventive.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-calendar-check text-lg mr-3'></i> <span class="sidebar-text">Preventive</span>
+          </a>
+          <a href="Corrective.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-error-circle text-lg mr-3'></i> <span class="sidebar-text">Corrective</span>
+          </a>
+        </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workshop', this)">
+        <div class="flex items-center"><i class='bx bx-building text-xl mr-3'></i> <span class="sidebar-text">Supply and Placement</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workshop" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="Pickup.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cog text-lg mr-3'></i> <span class="sidebar-text">Pick Up Sparepart</span>
+        </a>
+        <a href="SparepartArrival.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-archive text-lg mr-3'></i> <span class="sidebar-text">Sparepart Arrival</span>
+        </a>
+        <a href="AssetPlacement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cube text-lg mr-3'></i> <span class="sidebar-text">Asset Placement</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- PERBAIKAN: Penulisan class diperbaiki -->
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-inventory', this)">
+        <div class="flex items-center"><i class='bx bx-package text-xl mr-3'></i> <span class="sidebar-text">Inventory</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-inventory" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="UsageLog.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-history text-lg mr-3'></i> <span class="sidebar-text">Sparepart Management</span>
+        </a>
+        <a href="AssetManagement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-spreadsheet text-lg mr-3'></i> <span class="sidebar-text">Asset Management</span>
+        </a>
+        <a href="DatabaseMaster.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-data text-lg mr-3'></i> <span class="sidebar-text">Master Database</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="mechanic.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-refresh text-lg mr-3'></i> <span class="sidebar-text">Mechanic</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-reports', this)">
+        <div class="flex items-center"><i class='bx bx-pie-chart-alt-2 text-xl mr-3'></i> <span class="sidebar-text">Reports Analysis</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-reports" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="TrackingAssets.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-radar text-lg mr-3'></i> <span class="sidebar-text">Asset History</span>
+        </a>
+        <a href="mttrmtbdanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-bar-chart text-lg mr-3'></i> <span class="sidebar-text">MTTR and MTBF Analysis</span>
+        </a>
+        <a href="TrackingSpareparts.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-folder text-lg mr-3'></i> <span class="sidebar-text">Spareparts Usage</span>
+        </a>
+        <a href="costanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-pie-chart-alt text-lg mr-3'></i> <span class="sidebar-text">Cost Analysis</span>
+        </a>
+        <a href="mechanicperformance.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-line-chart text-lg mr-3'></i> <span class="sidebar-text">Mechanic Analysis</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="UserSettings.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-user text-xl mr-3'></i> <span class="sidebar-text">User Settings</span>
+    </a>
+    
+    <!-- (Lanjutkan paste semua menu submenu-workorder, submenu-maintenance, dst di sini sesuai kode asli Anda) -->
+    
+  </nav>
+</aside>
+  <div class="flex-1 flex flex-col h-screen min-w-0">
+    <header class="h-14 bg-white border-b border-gray-200 flex justify-end items-center px-6 shrink-0 z-10 shadow-sm">
+        <div class="flex items-center space-x-4 text-sm">
+        <div class="flex items-center space-x-3">
+            <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+            <div class="text-right">
+                <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+                <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+            </div>
+        </div>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6 md:p-8 bg-gray-50 flex flex-col">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 shrink-0">
+        <div>
+          <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Sparepart Usage Analytics</h1>
+          <p class="text-sm text-gray-500 mt-1">Monitor inventory turnover, track spare part usage, and supply chain records.</p>
+        </div>
+        <div class="relative">
+            <button onclick="document.getElementById('filterDropdown').classList.toggle('hidden')" class="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-orange-50 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm font-bold shadow-sm transition-all bg-white text-gray-700">
+                <i class='bx bx-filter text-orange-500 mr-2 text-xl'></i>
+                Filter
+            </button>
+            
+            <div id="filterDropdown" class="hidden absolute right-0 mt-2 w-[400px] bg-white rounded-2xl shadow-xl z-50 border border-gray-100 p-6 text-gray-800">
+                <div class="text-center mb-5">
+                    <h3 class="text-lg font-bold text-gray-900">Filter Analytics</h3>
+                    <p class="text-xs text-gray-500 mt-1">Saring berdasarkan nama, rack, atau tanggal</p>
+                </div>
+                <div class="relative mb-4">
+                    <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg'></i>
+                    <input type="text" id="searchInput" onkeyup="applyFilter()" placeholder="Cari nama sparepart..." 
+                           class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm transition-all bg-gray-50">
+                </div>
+                <div class="flex gap-2 mb-4">
+                    <select id="filterStorage" onchange="applyFilter()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-orange-500 bg-white">
+                        <option value="">Semua Rack</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <input type="date" id="filterStartDate" onchange="applyFilter()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-orange-500 bg-white" title="Tanggal Mulai">
+                    <input type="date" id="filterEndDate" onchange="applyFilter()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-orange-500 bg-white" title="Tanggal Akhir">
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 shrink-0">
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-emerald-300 transition-colors">
+            <div class="absolute -right-4 -top-4 w-20 h-20 bg-emerald-50 rounded-full opacity-50 pointer-events-none"></div>
+            <div class="z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Maintenance Cost</p>
+                <h3 class="text-2xl font-black text-gray-800">Rp <span id="val-total">0</span><span class="text-sm text-gray-500 font-semibold ml-1"></span></h3>
+            </div>
+            <div class="bg-emerald-100 text-emerald-600 p-3.5 rounded-xl z-10"><i class='bx bx-wallet text-2xl'></i></div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-blue-300 transition-colors">
+            <div class="absolute -right-4 -top-4 w-20 h-20 bg-blue-50 rounded-full opacity-50 pointer-events-none"></div>
+            <div class="z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Biaya Mekanik</p>
+                <h3 class="text-2xl font-black text-gray-800"><span id="val-used">-</span><span class="text-sm text-gray-500 font-semibold ml-1"></span></h3>
+            </div>
+            <div class="bg-blue-100 text-blue-600 p-3.5 rounded-xl z-10"><i class='bx bx-user-circle text-2xl'></i></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-red-300 transition-colors">
+            <div class="absolute -right-4 -top-4 w-20 h-20 bg-red-50 rounded-full opacity-50 pointer-events-none"></div>
+            <div class="z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Biaya Sparepart</p>
+                <h3 class="text-2xl font-black text-gray-800">Rp <span id="val-low">0</span><span class="text-sm text-gray-500 font-semibold ml-1"></span></h3>
+            </div>
+            <div class="bg-red-100 text-red-600 p-3.5 rounded-xl z-10"><i class='bx bx-coin-stack text-2xl'></i></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-orange-300 transition-colors">
+            <div class="absolute -right-4 -top-4 w-20 h-20 bg-orange-50 rounded-full opacity-50 pointer-events-none"></div>
+            <div class="z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Cost Perbaikan Tertinggi</p>
+                <h3 class="text-lg font-black text-gray-800 mt-1" id="val-active-cat">-</h3>
+            </div>
+            <div class="bg-orange-100 text-orange-600 p-3.5 rounded-xl z-10"><i class='bx bx-trending-up text-2xl'></i></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col lg:col-span-2 min-h-[350px]">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-50 p-2 rounded-lg text-blue-600"><i class='bx bx-line-chart text-xl'></i></div>
+                    <h3 class="font-bold text-gray-800 text-lg tracking-tight">Monthly Usage Trend</h3>
+                </div>
+            </div>
+            <div class="relative flex-1 w-full h-full">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col min-h-[350px]">
+            <div class="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100 shrink-0">
+                <div class="bg-orange-50 p-2 rounded-lg text-orange-600"><i class='bx bx-pie-chart-alt-2 text-xl'></i></div>
+                <h3 class="font-bold text-gray-800 text-lg tracking-tight">Cost by Area</h3>
+            </div>
+            <div class="relative flex-1 w-full h-full flex items-center justify-center">
+                <canvas id="stockDoughnutChart"></canvas>
+            </div>
+        </div>
+
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col min-h-[350px]">
+            <div class="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100 shrink-0">
+                <div class="bg-purple-50 p-2 rounded-lg text-purple-500"><i class='bx bx-bar-chart-alt text-xl'></i></div>
+                <h3 class="font-bold text-gray-800 text-lg tracking-tight">Top 5 Cost Maintenance by Machine</h3>
+            </div>
+            <div class="relative flex-1 w-full h-full">
+                <canvas id="topUsedChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col min-h-[350px] max-h-[400px]">
+            <div class="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100 shrink-0">
+                <div class="bg-emerald-50 p-2 rounded-lg text-emerald-500"><i class='bx bx-history text-xl'></i></div>
+                <h3 class="font-bold text-gray-800 text-lg tracking-tight">Top 5 High Value by Sparepart</h3>
+            </div>
+            <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar" id="activity-list">
+                <div class="space-y-3">
+                    <div class="activity-item flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-colors" data-category="o-ring">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-red-50 text-red-500 h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0"><i class='bx bx-minus text-lg'></i></div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">O-Ring Set Hidrolik</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Used on: Molding Machine 01</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-red-500">-2 Pcs</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Today</p>
+                        </div>
+                    </div>
+                    
+                    <div class="activity-item flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-colors" data-category="v-belt">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-emerald-50 text-emerald-500 h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0"><i class='bx bx-plus text-lg'></i></div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">V-Belt B-42</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Restock Received</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-emerald-500">+10 Pcs</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Yesterday</p>
+                        </div>
+                    </div>
+
+                    <div class="activity-item flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-colors" data-category="bearing">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-red-50 text-red-500 h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0"><i class='bx bx-minus text-lg'></i></div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">Bearing SKF 6204</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Used on: Conveyor Belt</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-red-500">-1 Pcs</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">June 14</p>
+                        </div>
+                    </div>
+
+                    <div class="activity-item flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-colors" data-category="sensor">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-emerald-50 text-emerald-500 h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0"><i class='bx bx-plus text-lg'></i></div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">Sensor Proximity</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Restock Received</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-emerald-500">+5 Pcs</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">June 12</p>
+                        </div>
+                    </div>
+
+                    <div class="activity-item flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-colors" data-category="filter">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-red-50 text-red-500 h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0"><i class='bx bx-minus text-lg'></i></div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">Filter Udara</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Used on: Air Compressor</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-red-500">-4 Pcs</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">June 10</p>
+                        </div>
+                    </div>
+                    
+                    <div class="activity-item flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-colors" data-category="oli">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-red-50 text-red-500 h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0"><i class='bx bx-minus text-lg'></i></div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">Oli Hidrolik (Liters)</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Used on: Hydraulic Press</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-red-500">-15 Ltr</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">June 08</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="filterModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-[400px] overflow-hidden transform transition-all scale-95" id="filter-modal-box">
+        <div class="bg-gray-800 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold text-lg flex items-center"><i class='bx bx-filter-alt mr-2'></i> Filter by Category</h3>
+            <button onclick="closeFilterModal()" class="text-gray-400 hover:text-red-400 transition-colors">
+                <i class='bx bx-x text-3xl'></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <p class="text-sm text-gray-500 mb-4 font-medium">Select categories to show:</p>
+            <div class="space-y-3 max-h-60 overflow-y-auto" id="filter-checkboxes">
+                <label class="flex items-center space-x-3 cursor-pointer group mb-2 border-b border-gray-100 pb-2">
+                    <input type="checkbox" class="filter-cb w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500" value="all" checked>
+                    <span class="text-base text-gray-800 font-bold group-hover:text-orange-600 transition-colors">Select All</span>
+                </label>
+                </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+            <button onclick="closeFilterModal()" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition-colors">Cancel</button>
+            <button onclick="applyFilter()" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-lg shadow-sm transition-colors">Apply Filter</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="lowStockModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[100] backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-95" id="low-stock-modal-box">
+          <div class="bg-red-500 px-6 py-4 flex justify-between items-center text-white">
+              <h3 class="font-bold text-lg flex items-center"><i class='bx bx-error-circle mr-2'></i> Low Stock Items</h3>
+              <button onclick="closeLowStockModal()" class="text-red-100 hover:text-white transition-colors">
+                  <i class='bx bx-x text-2xl font-bold'></i>
+              </button>
+          </div>
+          <div class="p-6 max-h-[60vh] overflow-y-auto bg-gray-50" id="low-stock-list">
+          </div>
+          <div class="bg-white px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button onclick="closeLowStockModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors shadow-sm">Tutup</button>
+          </div>
+      </div>
+  </div>
+
+  <script>
+    // --- Global Chart Instances ---
+    let chartTrend, chartTopUsed, chartStock;
+
+    // --- Data Variables ---
+    let categoryData = [];
+    let activityLogs = [];
+    let currentSelectedIds = [];
+    let globalSpareparts = [];
+    let globalAssets = [];
+    let globalWOs = [];
+    const colors = ['#f97316', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#eab308', '#ec4899', '#06b6d4'];
+
+    async function fetchTrackingData() {
+        try {
+            const [spRes, logRes, assetRes, woRes] = await Promise.all([
+                fetch('/api/spareparts').catch(() => null),
+                fetch('/api/pickup').catch(() => null),
+                fetch('/api/assets').catch(() => null),
+                fetch('/api/workorders').catch(() => null)
+            ]);
+            
+            const spareparts = spRes ? await spRes.json() : [];
+            activityLogs = logRes ? await logRes.json() : [];
+            const assets = assetRes ? await assetRes.json() : [];
+            const wos = woRes ? await woRes.json() : [];
+
+            globalSpareparts = spareparts;
+            globalAssets = assets;
+            globalWOs = wos;
+
+            categoryData = spareparts.map((sp, idx) => {
+                const logsForPart = activityLogs.filter(l => l.id_part === sp.id_part);
+                const totalUsed = logsForPart.reduce((sum, l) => sum + l.qty, 0);
+                
+                let trendArr = [0, 0, 0, 0, 0, totalUsed]; 
+                
+                return {
+                    id: sp.id_part,
+                    name: sp.name,
+                    storage: sp.storage,
+                    low: sp.stock <= sp.min_stock ? 1 : 0,
+                    used: totalUsed,
+                    total: sp.stock,
+                    trend: trendArr,
+                    color: colors[idx % colors.length]
+                };
+            });
+
+            currentSelectedIds = categoryData.map(c => c.id);
+            
+            const storageSet = new Set();
+            spareparts.forEach(item => { if(item.storage) storageSet.add(item.storage); });
+            const filterStorage = document.getElementById('filterStorage');
+            if(filterStorage) {
+                filterStorage.innerHTML = '<option value="">Semua Rack</option>';
+                storageSet.forEach(storage => { filterStorage.innerHTML += `<option value="${storage}">${storage}</option>`; });
+            }
+            
+            initFilterModal();
+            initCharts();
+            updateDashboard();
+            renderActivityLogs();
+        } catch(e) { console.error("Error fetching tracking data", e); }
+    }
+
+    function renderActivityLogs() {
+        const container = document.querySelector('#activity-list .space-y-3');
+        container.innerHTML = '';
+        
+        // Aggregasi total cost per sparepart berdasarkan log usage (qty > 0 menandakan pickup/dipakai)
+        let costByPart = {};
+        
+        activityLogs.forEach(log => {
+            if (log.qty > 0) {
+                const part = globalSpareparts.find(p => p.id_part === log.id_part);
+                if (part) {
+                    const price = parseFloat(part.price_per_unit) || 0;
+                    const cost = log.qty * price;
+                    
+                    if (!costByPart[log.id_part]) {
+                        costByPart[log.id_part] = {
+                            id_part: log.id_part,
+                            name: part.name || log.id_part,
+                            totalQty: 0,
+                            totalCost: 0,
+                            unit: part.unit || 'Pcs'
+                        };
+                    }
+                    costByPart[log.id_part].totalQty += log.qty;
+                    costByPart[log.id_part].totalCost += cost;
+                }
+            }
+        });
+
+        // Convert ke array dan urutkan berdasarkan cost tertinggi
+        const sortedSpareparts = Object.values(costByPart).sort((a, b) => b.totalCost - a.totalCost).slice(0, 5);
+
+        if (sortedSpareparts.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">Belum ada data penggunaan sparepart.</p>';
+            return;
+        }
+
+        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+
+        sortedSpareparts.forEach((sp, idx) => {
+            const html = `
+                <div class="activity-item flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-50 text-indigo-500 h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0">${idx + 1}</div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800">${sp.name}</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Digunakan: ${sp.totalQty} ${sp.unit}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-black text-indigo-600">${formatRp(sp.totalCost)}</p>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Total Value Usage</p>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    // --- Sidebar Logics ---
+
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) {
+          sidebar.classList.remove('sidebar-collapsed');
+      }
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+        function loadSidebar() {
+            fetch('sidebar.html')
+                .then(response => response.text())
+                .then(data => {
+                    const sidebar = document.getElementById('sidebar');
+                    if (sidebar) sidebar.outerHTML = data;
+                    setActiveMenu();
+                });
+        }
+
+        function setActiveMenu() {
+            const path = window.location.pathname.split('/').pop() || 'Index.html';
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                if (link.getAttribute('href') === path) {
+                    link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+                    link.classList.add('bg-orange-500', 'text-white');
+                    const submenu = link.closest('[id^="submenu-"]');
+                    if (submenu) {
+                        submenu.classList.remove('hidden');
+                        submenu.classList.add('block');
+                        submenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+                    }
+                }
+            });
+        }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSidebar();
+    const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+
+          const allowedRoles = ['Admin Developer', 'Admin Sparepart'];
+          if (!allowedRoles.includes(userData.role)) {
+              document.querySelector('main').style.filter = 'blur(5px)';
+              document.querySelector('main').style.pointerEvents = 'none';
+
+              Swal.fire({
+                  icon: 'error',
+                  title: 'Akses Ditolak',
+                  text: 'Halaman Cost Analysis hanya dapat diakses Admin Developer dan Admin Sparepart.',
+                  allowOutsideClick: false,
+                  showConfirmButton: false,
+                  backdrop: false
+              });
+              return;
+          }
+      }
+
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'TrackingSpareparts.html' && link.getAttribute('href') === 'TrackingSpareparts.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+
+      fetchTrackingData();
+    });
+
+    // --- Filter Logics ---
+    function initFilterModal() {
+        const container = document.getElementById('filter-checkboxes');
+        let html = container.innerHTML; // keep "select all"
+        
+        categoryData.forEach(c => {
+            html += `
+                <label class="flex items-center space-x-3 cursor-pointer group">
+                    <input type="checkbox" class="filter-cb w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500" value="${c.id}" checked>
+                    <span class="text-base text-gray-700 font-medium group-hover:text-orange-600 transition-colors">${c.name}</span>
+                </label>
+            `;
+        });
+        
+        container.innerHTML = html;
+
+        const checkboxes = document.querySelectorAll('.filter-cb:not([value="all"])');
+        const allCheckbox = document.querySelector('.filter-cb[value="all"]');
+
+        allCheckbox.addEventListener('change', (e) => {
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                const allChecked = Array.from(checkboxes).every(c => c.checked);
+                allCheckbox.checked = allChecked;
+            });
+        });
+    }
+
+    function openFilterModal() {
+        const modal = document.getElementById('filterModal');
+        const box = document.getElementById('filter-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeFilterModal() {
+        const modal = document.getElementById('filterModal');
+        const box = document.getElementById('filter-modal-box');
+        box.classList.remove('scale-100');
+        box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function showLowStockModal() {
+        const modal = document.getElementById('lowStockModal');
+        const box = document.getElementById('low-stock-modal-box');
+        const listContainer = document.getElementById('low-stock-list');
+        
+        const lowStockItems = categoryData.filter(item => item.low === 1);
+        
+        if (lowStockItems.length === 0) {
+            listContainer.innerHTML = '<div class="text-center text-gray-500 py-6 font-medium">Semua stock terpantau aman.</div>';
+        } else {
+            listContainer.innerHTML = lowStockItems.map(item => `
+                <div class="bg-white p-4 rounded-xl border border-red-200 mb-3 flex justify-between items-center shadow-sm">
+                    <div>
+                        <p class="font-bold text-gray-800">${item.name || '-'}</p>
+                        <p class="text-xs text-gray-500 font-mono mt-1">${item.id || '-'}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xl font-extrabold text-red-600">${item.total || 0}</p>
+                        <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Current Stock</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeLowStockModal() {
+        const modal = document.getElementById('lowStockModal');
+        const box = document.getElementById('low-stock-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function applyFilter() {
+        const query = (document.getElementById('searchInput')?.value || '').toLowerCase();
+        const storage = document.getElementById('filterStorage')?.value || '';
+        const startDate = document.getElementById('filterStartDate')?.value;
+        const endDate = document.getElementById('filterEndDate')?.value;
+
+        window.filterStartDate = startDate;
+        window.filterEndDate = endDate;
+
+        currentSelectedIds = categoryData.filter(c => {
+            const matchName = (c.name || '').toLowerCase().includes(query) || (c.id || '').toLowerCase().includes(query);
+            const matchStorage = storage === '' || c.storage === storage;
+            return matchName && matchStorage;
+        }).map(c => c.id);
+        
+        updateDashboard();
+    }
+
+    // --- Dashboard Updates ---
+    function updateDashboard() {
+        const filteredData = categoryData.filter(c => currentSelectedIds.includes(c.id));
+
+        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+
+        // 1. Calculate new KPIs
+        let totalBiayaSparepart = 0;
+        globalSpareparts.forEach(sp => {
+            totalBiayaSparepart += (parseFloat(sp.stock) || 0) * (parseFloat(sp.price_per_unit) || 0);
+        });
+
+        let totalMaintenanceCost = 0;
+        let costByMachine = {};
+        let costByArea = {};
+        
+        activityLogs.forEach(log => {
+            if(log.qty > 0) { 
+                const part = globalSpareparts.find(p => p.id_part === log.id_part);
+                const price = part ? (parseFloat(part.price_per_unit) || 0) : 0;
+                const cost = log.qty * price;
+                
+                totalMaintenanceCost += cost;
+
+                const wo = globalWOs.find(w => w.id === log.work_order || w.wo_id === log.work_order || `WO-${w.id}` === log.work_order);
+                let machineName = 'Unknown';
+                let areaName = 'Unknown';
+                
+                if (wo && wo.asset_id) {
+                    const asset = globalAssets.find(a => a.machine_id === wo.asset_id);
+                    if (asset) {
+                        machineName = asset.machine_name || 'Unknown';
+                        areaName = asset.area || 'Unknown';
+                    }
+                }
+
+                if (!costByMachine[machineName]) costByMachine[machineName] = 0;
+                costByMachine[machineName] += cost;
+
+                if (!costByArea[areaName]) costByArea[areaName] = 0;
+                costByArea[areaName] += cost;
+            }
+        });
+
+        let highestMachine = '-';
+        let highestCost = 0;
+        for (const [machine, cost] of Object.entries(costByMachine)) {
+            if (cost > highestCost) {
+                highestCost = cost;
+                highestMachine = machine;
+            }
+        }
+
+        document.getElementById('val-total').innerText = formatRp(totalMaintenanceCost).replace('Rp', '').trim();
+        document.getElementById('val-used').innerText = '-';
+        document.getElementById('val-low').innerText = formatRp(totalBiayaSparepart).replace('Rp', '').trim();
+        document.getElementById('val-active-cat').innerHTML = `<span class="text-lg">${highestMachine}</span><br><span class="text-sm font-bold text-gray-500">${formatRp(highestCost)}</span>`;
+
+        // 2. Update List Top 5
+        renderActivityLogs();
+
+        // 3. Update Charts
+        updateCharts(filteredData, costByArea, costByMachine);
+    }
+
+    function initCharts() {
+        Chart.defaults.font.family = 'Inter';
+        Chart.defaults.color = '#6b7280';
+        
+        // Init Empty Charts
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        chartTrend = new Chart(ctxTrend, {
+            type: 'line',
+            data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], datasets: [] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { borderDash: [4, 4], color: '#f3f4f6' }, beginAtZero: true }
+                },
+                elements: { line: { tension: 0.4 } }
+            }
+        });
+
+        const ctxDoughnut = document.getElementById('stockDoughnutChart').getContext('2d');
+        chartStock = new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 15 } } }
+            }
+        });
+
+        const ctxBar = document.getElementById('topUsedChart').getContext('2d');
+        chartTopUsed = new Chart(ctxBar, {
+            type: 'bar',
+            data: { labels: [], datasets: [] },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, beginAtZero: true },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    function updateCharts(data, costByArea, costByMachine) {
+        if (!data || data.length === 0) {
+            chartTrend.data.datasets = []; chartTrend.update();
+            chartStock.data.datasets = []; chartStock.update();
+            chartTopUsed.data.datasets = []; chartTopUsed.update();
+            return;
+        }
+
+        // 1. Trend Chart Data
+        // Summing the arrays
+        let aggregatedTrend = [0, 0, 0, 0, 0, 0];
+        data.forEach(c => {
+            for(let i=0; i<6; i++) {
+                aggregatedTrend[i] += c.trend[i];
+            }
+        });
+
+        chartTrend.data.datasets = [{
+            label: 'Total Items Used',
+            data: aggregatedTrend,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            borderWidth: 3,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#3b82f6',
+            pointBorderWidth: 2,
+            pointRadius: 4
+        }];
+        chartTrend.update();
+
+        // 2. Cost by Area (Pie Chart)
+        const areaLabels = Object.keys(costByArea);
+        const areaCosts = Object.values(costByArea);
+        const areaColors = areaLabels.map((_, idx) => colors[idx % colors.length]);
+
+        chartStock.data.labels = areaLabels;
+        chartStock.data.datasets = [{
+            data: areaCosts,
+            backgroundColor: areaColors,
+            borderWidth: 0,
+            hoverOffset: 5
+        }];
+        chartStock.update();
+
+        // 3. Top 5 Cost Maintenance by Machine (Bar Chart)
+        const sortedMachines = Object.entries(costByMachine).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        
+        chartTopUsed.data.labels = sortedMachines.map(m => m[0]);
+        chartTopUsed.data.datasets = [{
+            label: 'Maintenance Cost (Rp)',
+            data: sortedMachines.map(m => m[1]),
+            backgroundColor: sortedMachines.map((_, idx) => colors[idx % colors.length]),
+            borderRadius: 6,
+            barThickness: 24
+        }];
+        chartTopUsed.update();
+    }
+  </script>
+
+  <script src="gtranslate.js"></script>
+  <script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

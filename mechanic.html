@@ -1,0 +1,450 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage Log - Can Sport</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+    /* Transisi halus untuk sidebar */
+    #sidebar { transition: width 0.3s ease; }
+    
+    /* Class saat ditutup (collapsed) */
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    
+    /* Sembunyikan submenu saat sidebar ditutup agar lebih rapi */
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+  <main class="flex-1 overflow-y-auto p-8 bg-gray-50 flex flex-col">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-gray-200 pb-4 mb-6 shrink-0">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Mechanic Detail</h1>
+        <p class="text-sm text-gray-500 mt-1">Showing about mechanic detail on work order</p>
+      </div>
+      <div class="relative w-full sm:w-64">
+          <i class='bx bx-search absolute left-3 top-3.5 text-gray-400 text-lg'></i>
+          <input type="text" id="search-input" oninput="filterMechanics()" placeholder="Search mechanic name..." 
+                 class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-orange-500 bg-white transition-all text-sm">
+      </div>
+    </div>
+
+    <div id="mechanic-cards-container" class="flex-1 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 divide-y divide-gray-200 pb-2">
+        <!-- Mechanic Cards Injected Here -->
+    </div>
+  </main>
+  </div>
+
+  <div id="mechanicModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all scale-95" id="mechanic-modal-box">
+      <div class="bg-orange-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-wrench mr-2 text-xl'></i> Evaluasi & History Asset
+        </h3>
+        <button onclick="closeMechanicModal()" class="text-orange-100 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      <div class="p-6 bg-white border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div class="flex items-center gap-3">
+              <!-- Ganti div ikon dengan tag img -->
+              <img id="modal-mech-avatar" src="" class="w-12 h-12 rounded-full shadow-sm object-cover" alt="Avatar">
+              <div>
+                  <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Mechanic Name</p>
+                  <h4 class="text-xl font-extrabold text-gray-800" id="modal-mech-name">Name</h4>
+              </div>
+          </div>
+          <div class="flex items-center gap-2">
+              <select id="modal-mech-status-filter" onchange="filterMechanicHistory()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 text-gray-600 font-medium">
+                  <option value="">All Status</option>
+                  <option value="IN PROGRESS">IN PROGRESS</option>
+                  <option value="CLOSED">CLOSED</option>
+              </select>
+              <input type="date" id="modal-mech-date-filter" onchange="filterMechanicHistory()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 text-gray-600 font-medium">
+          </div>
+      </div>
+      <div class="p-6 max-h-[50vh] overflow-y-auto bg-gray-50" id="mechanic-modal-content">
+         </div>
+      <div class="bg-white px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button onclick="closeMechanicModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let mechanicsData = [];
+    let woHistoryData = [];
+    let pickupHistoryData = [];
+
+    // Fungsi ini dieksekusi secara otomatis saat halaman web pertama kali dimuat untuk memuat sidebar, profil pengguna dan memanggil pemuatan data mekanik
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+      fetchMechanicData();
+    });
+
+    // Fungsi ini untuk mengambil data pengguna, work order, dan riwayat pengambilan sparepart dari API backend sekaligus menyaring data khusus mekanik
+    async function fetchMechanicData() {
+        try {
+            const [resUsers, resWO, resPickup] = await Promise.all([
+                fetch('/api/users').catch(() => null),
+                fetch('/api/workorders').catch(() => null),
+                fetch('/api/pickup').catch(() => null)
+            ]);
+
+            let users = [];
+            if (resUsers && resUsers.ok) users = await resUsers.json();
+            if (resWO && resWO.ok) woHistoryData = await resWO.json();
+            if (resPickup && resPickup.ok) pickupHistoryData = await resPickup.json();
+
+            mechanicsData = users.filter(u => u.department && u.department.toLowerCase() === 'mechanic');
+            filterMechanics();
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+    }
+
+    let currentMechNameForModal = '';
+
+    // Fungsi ini untuk menyaring dan menyusun elemen HTML riwayat pekerjaan dan pemakaian sparepart berdasarkan mekanik yang sedang dilihat serta memfilternya bedasarkan tanggal atau status
+    function filterMechanicHistory() {
+        if (!currentMechNameForModal) return;
+        
+        const content = document.getElementById('mechanic-modal-content');
+        const filterDate = document.getElementById('modal-mech-date-filter').value;
+        const filterStatus = document.getElementById('modal-mech-status-filter') ? document.getElementById('modal-mech-status-filter').value : '';
+        let wos = woHistoryData.filter(w => (w.technician || '').toLowerCase() === currentMechNameForModal.toLowerCase());
+        
+        if (filterStatus) {
+            wos = wos.filter(w => (w.status || '').toUpperCase() === filterStatus.toUpperCase());
+        }
+
+        if (filterDate) {
+            wos = wos.filter(w => {
+                const wDate = w.start_time || w.request_time || w.created_at;
+                if (!wDate) return false;
+                return wDate.startsWith(filterDate);
+            });
+        }
+        
+        let historyHtml = wos.map(wo => {
+            let dt = parseFloat(wo.total_downtontime_minute ?? wo.total_downtime_minute ?? wo.downtime);
+            let downtimeStr = isNaN(dt) ? '-' : dt + ' Menit';
+            
+            let rt = parseFloat(wo.response_time_minute ?? wo.response_time);
+            let responseTimeStr = isNaN(rt) ? (wo.response_time || '-') : rt + ' Menit';
+            
+            // Backup kalkulasi jika field response_time dari backend masih kosong
+            if ((isNaN(rt) || !wo.response_time) && wo.request_time && wo.start_time) {
+                let diffMs = new Date(wo.start_time) - new Date(wo.request_time);
+                let diffMins = Math.max(0, Math.round(diffMs / 60000));
+                responseTimeStr = diffMins + ' Menit';
+            }
+            
+            const woIdTarget = String(wo.id_wo || wo.wo_id || wo.id || wo.no_wo || wo.work_order_id || '').trim();
+            const relatedPickups = (pickupHistoryData || []).filter(p => {
+                const pWo = String(p.id_wo || p.wo_id || p.no_wo || p.work_order_id || p.work_order || '').trim();
+                if (woIdTarget && pWo && (woIdTarget === pWo || `WO-${woIdTarget}` === pWo || woIdTarget === `WO-${pWo}`)) return true;
+                const pTech = String(p.technician || p.user_name || '').trim().toLowerCase();
+                const wTech = String(wo.technician || '').trim().toLowerCase();
+                const pAsset = String(p.asset_id || p.machine_name || '').trim();
+                const wAsset = String(wo.asset_id || wo.machine_name || '').trim();
+                return pTech && wTech && pTech === wTech && pAsset && wAsset && pAsset === wAsset;
+            });
+
+            let sparepartHtml = `
+                <div class="col-span-2 mt-3 pt-3 border-t border-gray-100">
+                    <span class="font-bold text-gray-500 block text-xs uppercase mb-1.5"><i class='bx bx-cog mr-1'></i> Sparepart Digunakan:</span>
+            `;
+
+            if (relatedPickups.length > 0) {
+                sparepartHtml += `<ul class="space-y-1">`;
+                relatedPickups.forEach(p => {
+                    sparepartHtml += `
+                        <li class="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-gray-100 shadow-sm">
+                            <span class="font-semibold text-gray-700 text-xs">${p.part_name || p.id_part || 'Unknown Part'}</span> 
+                            <span class="font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded text-[10px]">${p.qty} pcs</span>
+                        </li>`;
+                });
+                sparepartHtml += `</ul>`;
+            } else {
+                sparepartHtml += `<span class="text-xs text-gray-400 italic flex items-center"><i class='bx bx-info-circle mr-1'></i> Tidak ada pemakaian part</span>`;
+            }
+            sparepartHtml += `</div>`;
+
+            const lineStr = wo.line || wo.line_name || wo.location || wo.area || '';
+            const lineDisplay = lineStr ? ` - ${lineStr}` : '';
+            const faultDesc = wo.description || wo.fault_description || wo.task_description || wo.problem || wo.fault || '-';
+            const controlType = wo.control_type || wo.type || wo.wo_type || 'CORRECTIVE';
+            const requestTimeStr = formatDateTime(wo.request_time || wo.created_at);
+
+            return `
+                <div class="bg-white p-4 rounded-xl border border-gray-200 mb-4 text-sm shadow-sm hover:border-orange-300 transition-colors">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2 border-b border-gray-100 pb-2 mb-1 flex items-center justify-between">
+                            <div>
+                                <span class="font-extrabold text-gray-800 text-base">${wo.machine_name || 'Mesin Tanpa Nama'} (${wo.asset_id || '-'})</span>
+                                ${lineDisplay ? `<span class="text-xs text-gray-500 font-semibold block">${lineDisplay}</span>` : ''}
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 uppercase">${wo.status || 'IN PROGRESS'}</span>
+                        </div>
+                        <div class="col-span-2"><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Fault / Task Description:</span> <span class="font-semibold text-gray-800">"${faultDesc}"</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Control Type:</span> <span class="font-semibold text-gray-800">${controlType}</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Field Status:</span> <span class="font-semibold text-gray-800">${wo.status || '-'}</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Assigned Tech:</span> <span class="font-semibold text-gray-800">${wo.technician || '-'}</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Request Time:</span> <span class="font-semibold text-gray-800">${requestTimeStr}</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Start Time:</span> <span class="font-semibold text-gray-800">${formatDateTime(wo.start_time)}</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Finish Time:</span> <span class="font-semibold text-gray-800">${formatDateTime(wo.end_time || wo.completion)}</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Response Time:</span> <span class="text-blue-500 font-bold bg-blue-50 px-2 py-1 rounded inline-block"><i class='bx bx-run mr-1'></i>${responseTimeStr}</span></div>
+                        <div><span class="font-bold text-gray-500 block text-xs uppercase mb-0.5">Total Downtime:</span> <span class="text-red-500 font-bold bg-red-50 px-2 py-1 rounded inline-block"><i class='bx bx-time-five mr-1'></i>${downtimeStr}</span></div>
+                        ${sparepartHtml}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (wos.length === 0) historyHtml = '<div class="text-gray-500 text-sm italic text-center py-6">Belum ada history pekerjaan.</div>';
+        
+        content.innerHTML = historyHtml;
+    }
+
+    //Fungsi ini untuk membuka modal yang menampilkan profil mekanik dan memuat riwayat pekerjaan (evaluasi) khusus untuk mekanik yang dipilih 
+    function openMechanicModal(mechName) {
+        currentMechNameForModal = mechName;
+        if(document.getElementById('modal-mech-date-filter')) document.getElementById('modal-mech-date-filter').value = '';
+        if(document.getElementById('modal-mech-status-filter')) document.getElementById('modal-mech-status-filter').value = '';
+
+        const modal = document.getElementById('mechanicModal');
+        const box = document.getElementById('mechanic-modal-box');
+        
+        document.getElementById('modal-mech-name').innerText = mechName;
+
+        // --- Tambahkan logika foto profil di sini ---
+        const mech = mechanicsData.find(m => m.name.toLowerCase() === mechName.toLowerCase()) || {};
+        const loggedInUser = JSON.parse(localStorage.getItem('userData')) || {};
+        
+        let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(mechName)}&background=f97316&color=fff&bold=true`;
+        
+        if (mech.profile_picture) {
+            avatarUrl = mech.profile_picture;
+        } else if (loggedInUser.name && loggedInUser.name.toLowerCase() === mechName.toLowerCase() && loggedInUser.profile_picture) {
+            avatarUrl = loggedInUser.profile_picture;
+        }
+        
+        document.getElementById('modal-mech-avatar').src = avatarUrl;
+        // -------------------------------------------
+        
+        filterMechanicHistory();
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    // Fungsi ini untuk menutup pop up modal profil dan riwayat mekanik beserta efek transisi menutupnya 
+    function closeMechanicModal() {
+        const modal = document.getElementById('mechanicModal');
+        const box = document.getElementById('mechanic-modal-box');
+        box.classList.remove('scale-100');
+        box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    // Fungsi ini untuk memformat string teks tanggal mentah menjadi format waktu standar agar seragam saat ditampilkan 
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '-';
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    // Fungsi ini untuk menyaring dan merender tampilan kartu informasi mekanik ke dalam layout grid berdasarkan nama yang diketik pada kolom pencarian 
+    function filterMechanics() {
+        const container = document.getElementById('mechanic-cards-container');
+        if(!container) return;
+        const query = document.getElementById('search-input').value.toLowerCase();
+        
+        // Ubah container menjadi Grid Layout
+        container.className = "flex-1 overflow-y-auto min-h-0 bg-transparent grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-6";
+        container.innerHTML = '';
+
+        const filtered = mechanicsData.filter(m => m.name.toLowerCase().includes(query));
+
+        if (filtered.length === 0) {
+            container.className = "flex-1 flex items-center justify-center";
+            container.innerHTML = `<div class="text-center text-gray-500 py-8"><i class='bx bx-user-x text-5xl mb-3 opacity-50'></i><p>Tidak ada data mechanic ditemukan.</p></div>`;
+            return;
+        }
+        
+        const loggedInUser = JSON.parse(localStorage.getItem('userData')) || {};
+
+        filtered.forEach(mech => {
+            const wos = woHistoryData.filter(w => (w.technician || '').toLowerCase() === mech.name.toLowerCase());
+            const activeWOs = wos.filter(w => w.status === 'IN PROGRESS').length;
+            const joinDate = mech.tanggal_join ? new Date(mech.tanggal_join).toLocaleDateString('id-ID') : '-';
+
+            let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(mech.name)}&background=f97316&color=fff&bold=true`;
+            if (mech.profile_picture) {
+                avatarUrl = mech.profile_picture;
+            } else if (loggedInUser.name === mech.name && loggedInUser.profile_picture) {
+                avatarUrl = loggedInUser.profile_picture;
+            }
+
+            // Desain Card Baru
+            const card = document.createElement('div');
+            card.className = "bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group flex flex-col";
+            card.onclick = () => openMechanicModal(mech.name);
+            
+            card.innerHTML = `
+                <div class="p-5 flex-1 relative">
+                    <!-- Status Badge -->
+                    <div class="absolute top-4 right-4">
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${activeWOs > 0 ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'} flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full ${activeWOs > 0 ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500'}"></span>
+                            ${activeWOs > 0 ? 'Working' : 'Idle'}
+                        </span>
+                    </div>
+
+                    <!-- Profile Info -->
+                    <div class="flex flex-col items-center text-center mt-2">
+                        <div class="relative mb-3">
+                            <img src="${avatarUrl}" class="w-20 h-20 rounded-full shadow-sm object-cover border-4 border-white outline outline-1 outline-gray-200 group-hover:outline-orange-300 transition-all">
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 line-clamp-1 w-full px-2" title="${mech.name}">${mech.name}</h3>
+                        <p class="text-xs text-orange-500 uppercase tracking-wider font-bold mt-1">${mech.specialization || mech.skills || 'General Mechanic'}</p>
+                    </div>
+
+                    <!-- Stats Divider -->
+                    <div class="mt-5 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4 text-center">
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Total Tasks</p>
+                            <p class="text-lg font-black text-gray-700">${wos.length}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Join Date</p>
+                            <p class="text-sm font-bold text-gray-700 mt-1">${joinDate}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bottom Action -->
+                <div class="bg-gray-50 px-5 py-3 border-t border-gray-100 flex items-center justify-between group-hover:bg-orange-50 transition-colors">
+                    <span class="text-xs font-semibold text-gray-500 group-hover:text-orange-600">View History</span>
+                    <i class='bx bx-right-arrow-alt text-gray-400 group-hover:text-orange-500 transition-colors'></i>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'mechanic.html' && link.getAttribute('href') === 'mechanic.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) { sidebar.classList.remove('sidebar-collapsed'); }
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchMechanicData();
+
+    const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarUrl = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+          document.getElementById('header-avatar').src = avatarUrl;
+      }
+
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+    });
+  </script>
+  <script src="gtranslate.js"></script>
+  <script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

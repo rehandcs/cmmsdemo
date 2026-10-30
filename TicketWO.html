@@ -1,0 +1,1226 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticket Work Order - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @media (max-width: 767px) {
+      #sidebar { width: 18rem; }
+      header > div:last-child { min-width: 0; }
+      #header-user-name, #header-user-role { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+    /* Sticky note visual effect */
+    .sticky-note {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .sticky-note:hover {
+      transform: scale(1.03) rotate(0.5deg);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+    <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50 flex flex-col">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 border-b pb-4 shrink-0">
+              <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">Ticket Work Order</h1>
+                <p class="text-xs md:text-sm text-gray-500 mt-1">Manage maintenance requests, assign technician tasks, and track repair status in real-time.</p>
+              </div>
+        <div class="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs flex-wrap mt-0 w-full md:w-auto">
+          <button onclick="filterType('ALL')" class="px-3 py-1.5 rounded-md bg-gray-800 text-white font-medium shadow-sm border border-gray-700" id="btn-all">All</button>
+          <button onclick="filterType('CORRECTIVE')" class="px-3 py-1.5 rounded-md bg-white hover:bg-red-50 text-red-600 font-medium shadow-sm border border-red-200" id="btn-corrective">Corrective</button>
+          <button onclick="filterType('PREVENTIVE')" class="px-3 py-1.5 rounded-md bg-white hover:bg-blue-50 text-blue-600 font-medium shadow-sm border border-blue-200" id="btn-preventive">Preventive</button>
+          
+          <div class="h-6 w-px bg-gray-300 mx-1"></div>
+          
+         <div class="flex items-center gap-2 max-w-full">
+            <label for="dateFilter" class="font-bold text-gray-700">Date:</label>
+            <input type="date" id="dateFilter" onchange="executeMasterFilter()" class="min-w-0 max-w-full px-2 md:px-3 py-1.5 rounded-md bg-white text-gray-700 font-medium shadow-sm border border-gray-300 outline-none focus:border-orange-500 cursor-pointer">
+          </div>
+          
+          
+          <select id="statusFilter" onchange="executeMasterFilter()" class="min-w-0 max-w-full px-2 md:px-3 py-1.5 rounded-md bg-white text-gray-700 font-medium shadow-sm border border-gray-300 outline-none focus:border-orange-500 cursor-pointer">
+            <option value="ALL">All Status</option>
+            <option value="OPEN">Open</option>
+            <option value="IN PROGRESS">In Progress</option>
+            <option value="PENDING">Pending</option>
+            <option value="COMPLETED">Closed / Completed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex space-x-6 mt-4 justify-center border-b border-gray-200 shrink-0">
+          <button onclick="switchWOTab('TICKET')" id="tab-btn-ticket" class="pb-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600 transition-colors">Ticket Order</button>
+          <button onclick="switchWOTab('MYWORK')" id="tab-btn-mywork" class="pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors">My Work Order</button>
+      </div>
+
+      <div id="view-ticket" class="block">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mt-4 md:mt-6 pb-6" id="tickets-grid">
+          </div>
+      </div>
+
+      <div id="view-mywork" class="hidden mt-6 pb-6">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                  <thead class="bg-gray-50 border-b border-gray-200 text-gray-500">
+                      <tr>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Type / ID</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Machine / Asset</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Description</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Req Time</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Respon Time</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Start Time</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Start Downtime</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Finish Downtime</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Total Downtime</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider">Status</th>
+                          <th class="px-6 py-4 font-bold uppercase tracking-wider text-center">Action</th>
+                      </tr>
+                  </thead>
+                  <tbody id="mywork-tbody" class="divide-y divide-gray-100">
+                      </tbody>
+              </table>
+          </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Penambahan p-4 sm:p-0 untuk Mobile-First padding pembatas -->
+  <div id="ticketModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4 sm:p-0">
+    <!-- Mengganti fixed pixel (500px) ke Relative Units (max-w-lg) dan menambah Flex Layout (flex-col) -->
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden transition-all transform scale-95 flex flex-col max-h-full" id="ticket-modal-box">
+      <!-- Mobile First padding: px-4 pada seluler, px-6 pada layar sm ke atas -->
+      <div class="bg-gray-800 px-4 sm:px-6 py-4 flex justify-between items-start text-white shrink-0">
+        <div>
+          <!-- ID WO Disembunyikan Sesuai Request -->
+          <span id="modalWOId" class="text-xs font-mono bg-gray-700 px-2 py-0.5 rounded text-orange-400 font-bold" style="display:none;"></span>
+          <h3 id="modalTitle" class="font-bold text-lg mt-2 leading-tight"></h3>
+          <p id="modalMachineId" class="text-sm font-mono text-gray-400 mt-0.5"></p>
+          <p id="modalLocation" class="text-sm font-mono text-gray-400 mt-0.5"></p>
+        </div>
+        <div class="flex items-center gap-2 mt-1 shrink-0">
+          <button onclick="shareCurrentTicket()" class="text-gray-400 hover:text-orange-300 transition-colors" title="Share Work Order" aria-label="Share Work Order">
+            <i class='bx bx-share-alt text-xl'></i>
+          </button>
+          <button onclick="closeTicketModal()" class="text-gray-400 hover:text-red-400 transition-colors" title="Close" aria-label="Close">
+            <i class='bx bx-x text-2xl'></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-4 sm:p-6 space-y-4 text-sm max-h-[60vh] overflow-y-auto flex-1">
+        <!-- Penerapan Responsive Image (menghilangkan nilai h-48 statis, mengganti dengan rasio w-full aspect-video) -->
+        <div id="modalImageContainer" class="hidden rounded-lg overflow-hidden border border-gray-200 shadow-sm relative w-full aspect-video">
+            <img id="modalImage" class="w-full max-w-full h-auto object-cover cursor-pointer hover:opacity-90 transition-opacity block" src="" alt="Issue Evidence" onclick="Swal.fire({imageUrl: this.src, imageAlt: 'Evidence', width: 'auto', showConfirmButton: false, showCloseButton: true, customClass: {image: 'max-h-[80vh] max-w-full mx-auto rounded-lg'}})" />
+        </div>
+        <div>
+          <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block">Fault / Task Description</label>
+          <p id="modalDesc" class="mt-1 text-gray-700 leading-relaxed bg-gray-50 p-3 rounded border border-gray-100 font-medium italic"></p>
+        </div>
+        <div id="modalDelayReasonContainer" class="hidden mt-3">
+          <label class="text-xs font-bold text-amber-500 uppercase tracking-wider block">Delay Reason</label>
+          <p id="modalDelayReason" class="mt-1 text-gray-700 leading-relaxed bg-amber-50 p-3 rounded border border-amber-200 font-medium italic"></p>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block">Control Type</label>
+            <span id="modalType" class="mt-1 inline-block px-2.5 py-0.5 rounded font-bold text-xs text-white"></span>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block">Field Status</label>
+            <span id="modalStatus" class="mt-1 inline-block px-2.5 py-0.5 rounded font-bold text-xs"></span>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+          <div>
+            <span class="text-xs text-gray-400 block"><i class='bx bx-user-circle mr-1'></i>Assigned Tech</span>
+            <span id="modalUser" class="font-semibold text-gray-700 mb-2 block"></span>
+            
+            <span class="text-xs text-gray-400 mt-2 hidden" id="modalResponTimeLabel"><i class='bx bx-timer mr-1'></i>Respon Time</span>
+            <span id="modalResponTime" class="font-semibold text-blue-600 hidden block"></span>
+          </div>
+          <div>
+            <span class="text-xs text-gray-400 block"><i class='bx bx-time-five mr-1'></i>Request Time</span>
+            <span id="modalTime" class="font-semibold text-gray-700 mb-2 block"></span>
+            
+            <span class="text-xs text-gray-400 mt-2 hidden" id="modalTotalDowntimeLabel"><i class='bx bx-stopwatch mr-1'></i>Total Downtime</span>
+            <span id="modalTotalDowntime" class="font-bold text-red-600 font-mono text-sm hidden block">00:00:00</span>
+          </div>
+        </div>
+        </div>
+      <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-end gap-2">
+        <button onclick="closeTicketModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded transition-colors">Close</button>
+        <button id="btnProsesTiket" onclick="openActionModal()" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded transition-colors shadow-sm"><i class='bx bx-edit mr-1'></i>Take Action</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="actionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60] p-4 sm:p-0">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden transition-all transform scale-95 flex flex-col max-h-full" id="action-modal-box">
+      <div class="bg-gray-800 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg">Select Action</h3>
+        <button onclick="closeActionModal()" class="text-gray-400 hover:text-red-400 transition-colors">
+          <i class='bx bx-x text-2xl'></i>
+        </button>
+      </div>
+      <div class="p-6 flex flex-col gap-3" id="actionButtonsContainer">
+      </div>
+    </div>
+  </div>
+
+  <div id="delayModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[70] p-4 sm:p-0">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden transition-all transform scale-95 flex flex-col max-h-full" id="delay-modal-box">
+      <div class="bg-amber-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg"><i class='bx bx-time-five mr-2'></i>Delay Maintenance</h3>
+        <button onclick="closeDelayModal()" class="text-white hover:text-amber-200 transition-colors">
+          <i class='bx bx-x text-2xl'></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4 text-sm">
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Reason for Delay</label>
+          <textarea id="delay_reason" rows="3" class="w-full bg-gray-50 border border-gray-300 rounded p-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-gray-700" required></textarea>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Reschedule to</label>
+          <input type="date" id="delay_date" class="w-full bg-gray-50 border border-gray-300 rounded p-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-gray-700" required>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-end gap-2">
+        <button onclick="closeDelayModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded transition-colors">Cancel</button>
+        <button onclick="submitDelay()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded transition-colors shadow-sm">Save Delay</button>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let currentFilterType = 'ALL';
+    let allTicketsData = [];
+    let currentSelectedTicket = null;
+    let downtimeInterval = null; // Menambahkan interval untuk stopwatch
+    
+    // Nilai ini akan di-update dari localStorage secara dinamis di DOMContentLoaded
+    let currentUser = 'Admin Rehand';
+
+    function parseWibDate(value) {
+        if (!value || value === '-') return null;
+        if (value instanceof Date) return value;
+
+        const text = String(value).trim();
+        const dateOnlyMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        const datetimeMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2}):(\d{1,2})$/);
+
+        if (dateOnlyMatch) {
+            const [, year, month, day] = dateOnlyMatch;
+            return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0) - 7 * 60 * 60 * 1000);
+        }
+
+        if (datetimeMatch) {
+            const [, year, month, day, hour, minute, second] = datetimeMatch;
+            return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)) - 7 * 60 * 60 * 1000);
+        }
+
+        const d = new Date(text);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function getWibDateTimeString(date = new Date()) {
+        const d = date instanceof Date ? date : parseWibDate(date);
+        if (!d) return '-';
+
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+
+        const values = {};
+        formatter.formatToParts(d).forEach(part => {
+            if (part.type !== 'literal') values[part.type] = part.value;
+        });
+
+        return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+    }
+
+    function formatWibDateTime(value) {
+        const d = parseWibDate(value);
+        if (!d) return '-';
+
+        return new Intl.DateTimeFormat('id-ID', {
+            timeZone: 'Asia/Jakarta',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).format(d);
+    }
+
+    function formatDurationGlobal(ms) {
+        if (ms == null || isNaN(ms)) return '-';
+        if (ms < 0) ms = 0;
+        let totalSeconds = Math.floor(ms / 1000);
+        let hours = Math.floor(totalSeconds / 3600);
+        let minutes = Math.floor((totalSeconds % 3600) / 60);
+        let seconds = totalSeconds % 60;
+        return `${hours} h ${minutes} m ${seconds} s`;
+    }
+
+    function formatStopwatch(ms) {
+        if (ms == null || isNaN(ms) || ms < 0) return '00:00:00';
+        let totalSeconds = Math.floor(ms / 1000);
+        let hours = Math.floor(totalSeconds / 3600);
+        let minutes = Math.floor((totalSeconds % 3600) / 60);
+        let seconds = totalSeconds % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function handleLogout() {
+        localStorage.removeItem('userData');
+        window.location.href = 'Login.html';
+    }
+
+    function toggleSubmenu(id, element) {
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+    
+
+    async function loadTickets() {
+      try {
+        const res = await fetch('/api/workorders');
+        const rawData = await res.json();
+        allTicketsData = rawData; 
+        renderTickets();
+        openTicketFromUrl();
+      } catch (err) { console.error("Failed to fetch tickets:", err); }
+    }
+
+    function getWorkOrderIdentifier(wo) {
+      return [wo.id, wo.wo_id, wo.work_order_id, wo.workorder_id, wo.wo_number]
+        .find(value => value !== undefined && value !== null && String(value).trim() !== '');
+    }
+
+    function getDirectLinkWorkOrder(requestedId) {
+      const directIdMatch = requestedId.match(/^(\d{8})(\d{6})$/);
+      if (!directIdMatch) return null;
+
+      const [, datePart, sequencePart] = directIdMatch;
+      const targetDate = `${datePart.slice(0, 4)}-${datePart.slice(4, 6)}-${datePart.slice(6, 8)}`;
+      const sameDayWorkOrders = allTicketsData
+        .filter(wo => {
+          const requestDate = (wo.request_time || wo.target_date) ? getWibDateTimeString(parseWibDate(wo.request_time || wo.target_date)).slice(0, 10) : '';
+          return requestDate === targetDate;
+        })
+        .sort((first, second) => {
+          const firstTime = parseWibDate(first.request_time || first.target_date)?.getTime() || 0;
+          const secondTime = parseWibDate(second.request_time || second.target_date)?.getTime() || 0;
+          return firstTime - secondTime;
+        });
+
+      const sequence = Number(sequencePart);
+      return sameDayWorkOrders[sequence > 0 ? sequence - 1 : 0] || null;
+    }
+
+    function getWorkOrderShareId(wo) {
+      const dbId = getWorkOrderIdentifier(wo);
+      if (dbId !== undefined && dbId !== null && String(dbId).trim() !== '') {
+        return String(dbId).trim();
+      }
+
+      const requestDate = (wo.request_time || wo.target_date) ? getWibDateTimeString(parseWibDate(wo.request_time || wo.target_date)).slice(0, 10) : '';
+      if (!requestDate) return '';
+
+      const sameDayWorkOrders = allTicketsData
+        .filter(item => {
+          const itemDate = (item.request_time || item.target_date) ? getWibDateTimeString(parseWibDate(item.request_time || item.target_date)).slice(0, 10) : '';
+          return itemDate === requestDate;
+        })
+        .sort((first, second) => {
+          const firstTime = parseWibDate(first.request_time || first.target_date)?.getTime() || 0;
+          const secondTime = parseWibDate(second.request_time || second.target_date)?.getTime() || 0;
+          return firstTime - secondTime;
+        });
+
+      const sequenceIndex = sameDayWorkOrders.findIndex(item => {
+        return item.request_time === wo.request_time && item.asset_id === wo.asset_id && item.type === wo.type;
+      });
+      const sequence = sequenceIndex >= 0 ? sequenceIndex + 1 : 1;
+      const datePart = requestDate.replaceAll('-', '');
+      return `${datePart}${String(sequence).padStart(6, '0')}`;
+    }
+
+    async function copyToClipboardFallback(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (e) {
+          console.warn('navigator.clipboard gagal, mencoba execCommand:', e);
+        }
+      }
+
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '-9999px';
+        textArea.style.opacity = '0';
+        textArea.setAttribute('readonly', '');
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        textArea.setSelectionRange(0, 99999);
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) return true;
+      } catch (err) {
+        console.warn('execCommand copy gagal:', err);
+      }
+
+      return false;
+    }
+
+    window.copyShareUrl = async function(text, btnElement) {
+      const ok = await copyToClipboardFallback(text);
+      if (ok && btnElement) {
+        const origHtml = btnElement.innerHTML;
+        btnElement.innerHTML = "<i class='bx bx-check'></i> Tersalin!";
+        btnElement.classList.add('bg-green-600');
+        setTimeout(() => {
+          btnElement.innerHTML = origHtml;
+          btnElement.classList.remove('bg-green-600');
+        }, 2000);
+      }
+    };
+
+    window.shareToWhatsApp = function(url, title) {
+      const text = `*Work Order: ${title}*\nSilakan buka detail Work Order melalui tautan berikut:\n${url}`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    function shareCurrentTicket() {
+      if (!currentSelectedTicket) return;
+
+      const shareId = getWorkOrderShareId(currentSelectedTicket);
+      const machineName = currentSelectedTicket.machine_name || currentSelectedTicket.asset_id || `WO #${shareId}`;
+      const escapedTitle = String(machineName).replace(/['"\\]/g, ' ');
+
+      const localBase = 'https://sgsimev01.ptcansports.com';
+      const publicBase = 'https://unbroken-enactment-nephew.ngrok-free.dev';
+
+      const localUrl = `${localBase}/TicketWO.html?id=${encodeURIComponent(shareId)}`;
+      const publicUrl = `${publicBase}/TicketWO.html?id=${encodeURIComponent(shareId)}`;
+
+      const htmlContent = `
+        <div class="text-left space-y-4 pt-1">
+          <p class="text-xs text-gray-500 text-center mb-1">Pilih jenis tautan yang ingin dibagikan untuk Work Order ini:</p>
+
+          <!-- 1. OPSI LOCAL -->
+          <div class="border border-blue-200 bg-blue-50/60 rounded-xl p-3.5 shadow-sm">
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-1.5">
+                <i class='bx bx-wifi text-blue-600 text-lg'></i>
+                <span class="font-bold text-xs text-gray-800">Jaringan Lokal (Wi-Fi / LAN)</span>
+              </div>
+              <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">LOCAL</span>
+            </div>
+            <p class="text-[11px] text-gray-500 mb-2">Untuk perangkat/HP yang tersambung ke Wi-Fi kantor/pabrik.</p>
+            
+            <div class="mb-2.5">
+              <input type="text" readonly value="${localUrl}" id="swal-local-url" onclick="this.select()" class="w-full text-xs p-2 border border-blue-200 rounded-lg bg-white font-mono select-all focus:outline-none focus:border-blue-500 text-gray-700">
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="window.copyShareUrl('${localUrl}', this)" class="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm">
+                <i class='bx bx-copy text-sm'></i> Salin Link
+              </button>
+              <button type="button" onclick="window.shareToWhatsApp('${localUrl}', '${escapedTitle}')" class="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm" title="Kirim via WhatsApp">
+                <i class='bx bxl-whatsapp text-sm'></i> WA
+              </button>
+              <a href="${localUrl}" target="_blank" class="py-1.5 px-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center transition-colors" title="Buka di tab baru">
+                <i class='bx bx-external-link text-sm'></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- 2. OPSI PUBLIC (NGROK) -->
+          <div class="border border-purple-200 bg-purple-50/60 rounded-xl p-3.5 shadow-sm">
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-1.5">
+                <i class='bx bx-globe text-purple-600 text-lg'></i>
+                <span class="font-bold text-xs text-gray-800">Publik / Internet (Ngrok)</span>
+              </div>
+              <span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">PUBLIC</span>
+            </div>
+            <p class="text-[11px] text-gray-500 mb-2">Bisa diakses dari luar kantor tanpa perlu Wi-Fi pabrik.</p>
+            
+            <div class="mb-2.5">
+              <input type="text" readonly value="${publicUrl}" id="swal-public-url" onclick="this.select()" class="w-full text-xs p-2 border border-purple-200 rounded-lg bg-white font-mono select-all focus:outline-none focus:border-purple-500 text-gray-700">
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="window.copyShareUrl('${publicUrl}', this)" class="flex-1 py-1.5 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm">
+                <i class='bx bx-copy text-sm'></i> Salin Link
+              </button>
+              <button type="button" onclick="window.shareToWhatsApp('${publicUrl}', '${escapedTitle}')" class="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm" title="Kirim via WhatsApp">
+                <i class='bx bxl-whatsapp text-sm'></i> WA
+              </button>
+              <a href="${publicUrl}" target="_blank" class="py-1.5 px-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-semibold flex items-center justify-center transition-colors" title="Buka di tab baru">
+                <i class='bx bx-external-link text-sm'></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      Swal.fire({
+        title: `<div class="flex items-center justify-center gap-2 text-gray-800 text-base font-bold"><i class='bx bx-share-alt text-orange-500 text-xl'></i> Bagikan Work Order</div>`,
+        html: htmlContent,
+        showConfirmButton: true,
+        confirmButtonText: 'Tutup',
+        confirmButtonColor: '#4b5563',
+        showCloseButton: true,
+        customClass: {
+          popup: 'rounded-2xl max-w-md w-full p-5',
+          title: 'p-0 mb-1'
+        }
+      });
+    }
+
+    function openTicketFromUrl() {
+      const requestedId = new URLSearchParams(window.location.search).get('id');
+      if (!requestedId) return;
+
+      const requestedIdText = requestedId.trim().toLowerCase();
+      const workOrder = allTicketsData.find(wo => {
+        const identifier = getWorkOrderIdentifier(wo);
+        return identifier !== undefined && String(identifier).trim().toLowerCase() === requestedIdText;
+      }) || getDirectLinkWorkOrder(requestedIdText);
+
+      if (workOrder) {
+        openTicketDetail(workOrder);
+      } else {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Work Order Tidak Ditemukan',
+          text: `Work order dengan ID ${requestedId} tidak tersedia atau sudah tidak aktif.`,
+          confirmButtonColor: '#f97316'
+        });
+      }
+    }
+
+    function renderTickets() {
+      const grid = document.getElementById('tickets-grid');
+      if (!grid) return;
+      grid.innerHTML = ''; 
+      const statusVal = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : 'ALL';
+      const dateVal = document.getElementById('dateFilter') ? document.getElementById('dateFilter').value : '';
+      
+      const filtered = allTicketsData.filter(wo => {
+        const matchType = (currentFilterType === 'ALL' || wo.type === currentFilterType);
+        
+        // REVISI PENTING: Perbaikan Logika Filter Status (Menyamakan COMPLETED dengan CLOSED DB)
+        let matchStatus = false;
+        if (statusVal === 'ALL') {
+            matchStatus = (wo.status !== 'COMPLETED' && wo.status !== 'CLOSED');
+        } else if (statusVal === 'COMPLETED') {
+            matchStatus = (wo.status === 'COMPLETED' || wo.status === 'CLOSED');
+        } else {
+            matchStatus = (wo.status === statusVal);
+        }
+
+        // Filter berdasarkan tanggal yang dipilih atau tanggal hari ini (jika tidak ada input)
+        let matchDate = true;
+        
+        // Selalu gunakan target_date jika ada (seperti tiket Preventive), jika tidak, gunakan request_time (tiket Corrective)
+        const targetDateToCompare = parseWibDate(wo.target_date || wo.request_time);
+        
+        // Jika filter diisi oleh user
+        if (dateVal) {
+            const filterDate = parseWibDate(dateVal + ' 00:00:00');
+            if (targetDateToCompare && filterDate) {
+                matchDate = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Asia/Jakarta',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(targetDateToCompare) === new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Asia/Jakarta',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(filterDate);
+            } else {
+                matchDate = false;
+            }
+        } else {
+            const today = new Date();
+            const todayWib = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+            const targetRounded = targetDateToCompare ? new Date(targetDateToCompare.getTime()) : null;
+            if (targetRounded && todayWib) {
+                targetRounded.setHours(0, 0, 0, 0);
+                todayWib.setHours(0, 0, 0, 0);
+                matchDate = targetRounded <= todayWib;
+            } else {
+                matchDate = false;
+            }
+        }
+
+        return matchType && matchStatus && matchDate;
+      });
+
+      // REVISI: Mengurutkan Tiket (Semua Corrective berdasarkan prioritas -> baru Preventive)
+      filtered.sort((a, b) => {
+          const getPriorityWeight = (type, priority) => {
+              if (type === 'CORRECTIVE') {
+                  if (priority === 'Critical') return 5;
+                  if (priority === 'High') return 4;
+                  if (priority === 'Medium') return 3;
+                  if (priority === 'Low') return 2;
+                  return 1; // Corrective tanpa prioritas
+              }
+              if (type === 'PREVENTIVE') return 0;
+              return -1;
+          };
+          return getPriorityWeight(b.type, b.priority) - getPriorityWeight(a.type, a.priority);
+      });
+
+      filtered.forEach(wo => {
+        const isCorrective = wo.type === 'CORRECTIVE';
+        const bgClass = isCorrective ? 'bg-red-100 border-red-400' : 'bg-blue-100 border-blue-400';
+        const badgeBg = isCorrective ? 'bg-red-500' : 'bg-blue-500';
+        const textMuted = isCorrective ? 'text-red-700' : 'text-blue-700';
+
+        // Penambahan logika warna untuk Badge Prioritas
+        let priorityBadge = '';
+        if (wo.priority && wo.priority !== '-') {
+            let prioColor = 'bg-gray-400'; // Default warna
+            if (wo.priority === 'Critical') prioColor = 'bg-red-600';
+            else if (wo.priority === 'High') prioColor = 'bg-orange-500';
+            else if (wo.priority === 'Medium') prioColor = 'bg-yellow-500';
+            else if (wo.priority === 'Low') prioColor = 'bg-green-500';
+
+            priorityBadge = `<span class="text-[10px] font-bold tracking-wider ${prioColor} text-white px-2 py-0.5 rounded shadow-sm ml-2">${wo.priority} Priority</span>`;
+        }
+        
+        let timeStr = wo.request_time ? getWibDateTimeString(parseWibDate(wo.request_time)) : '-';
+        const techInfo = wo.technician ? `<br><i class='bx bx-user'></i> ${wo.technician}` : '';
+
+        const html = `
+          <div class="sticky-note ${bgClass} border-t-8 p-4 md:p-5 rounded-md shadow-md flex flex-col justify-between h-auto md:aspect-square cursor-pointer relative" 
+               onclick='openTicketDetail(${JSON.stringify(wo).replace(/'/g, "&#39;")})'>
+            <div class="mb-4 md:mb-0">
+              <div class="flex justify-between items-start">
+                <div>
+                   <span class="text-[10px] font-bold uppercase tracking-wider ${badgeBg} text-white px-2 py-0.5 rounded shadow-sm">${wo.type}</span>
+                   ${priorityBadge}
+                </div>
+              </div>
+              
+              <h3 class="text-lg font-bold text-gray-800 mt-3 truncate">${wo.machine_name || 'Mesin Tanpa Nama'}</h3>
+              <p class="text-xs font-mono text-gray-500 mt-0.5">${wo.asset_id || '-'}</p>
+              <p class="text-xs font-mono text-gray-500 mt-0.5">${wo.area || ''} ${wo.location || ''}</p>
+              
+              <p class="text-xs text-gray-600 mt-2 line-clamp-3 leading-relaxed font-medium italic">"${wo.issue_desc || '-'}"</p>
+              ${wo.status === 'PENDING' && (wo.delay_reason || wo.reason) ? `
+              <div class="mt-2 bg-amber-50/80 border border-amber-200 rounded p-2">
+                <span class="block text-[9px] font-bold text-amber-600 uppercase mb-0.5">Reason for Delay</span>
+                <p class="text-xs text-gray-700 font-medium italic line-clamp-2">"${wo.delay_reason || wo.reason}"</p>
+              </div>` : ''}
+            </div>
+            <div class="border-t border-gray-200/60 pt-3 flex justify-between items-end text-[11px] text-gray-500 font-medium">
+              <span><i class='bx bx-calendar mr-1'></i>${timeStr} ${techInfo}</span>
+              <span class="bg-white text-gray-800 border border-gray-300 px-1.5 py-0.5 rounded font-bold text-[9px] uppercase">${wo.status}</span>
+            </div>
+          </div>
+        `;
+        grid.insertAdjacentHTML('beforeend', html);
+      });
+      
+      renderMyWorkOrderTable(allTicketsData);
+    }
+
+    function renderMyWorkOrderTable(filteredData) {
+        const tbody = document.getElementById('mywork-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        
+        const statusVal = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : 'ALL';
+        const dateVal = document.getElementById('dateFilter') ? document.getElementById('dateFilter').value : '';
+
+        // Memfilter data yang hanya dikerjakan oleh user yang sedang login dan sesuai komponen filter
+        const myWorks = filteredData.filter(wo => {
+            if (wo.technician !== currentUser) return false;
+            
+            const matchType = (currentFilterType === 'ALL' || wo.type === currentFilterType);
+            
+            let matchStatus = false;
+            if (statusVal === 'ALL') {
+                matchStatus = true; // Tetap menampilkan semua status termasuk yang selesai/closed saat pilihan 'All Status'
+            } else if (statusVal === 'COMPLETED') {
+                matchStatus = (wo.status === 'COMPLETED' || wo.status === 'CLOSED');
+            } else {
+                matchStatus = (wo.status === statusVal);
+            }
+
+            let matchDate = true;
+            const targetDateToCompare = parseWibDate(wo.target_date || wo.request_time);
+            
+            if (dateVal) {
+                const filterDate = parseWibDate(dateVal + ' 00:00:00');
+                if (targetDateToCompare && filterDate) {
+                    matchDate = new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'Asia/Jakarta',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    }).format(targetDateToCompare) === new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'Asia/Jakarta',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    }).format(filterDate);
+                } else {
+                    matchDate = false;
+                }
+            } else {
+                const today = new Date();
+                const todayWib = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+                if (targetDateToCompare && todayWib) {
+                    const targetRounded = new Date(targetDateToCompare.getTime());
+                    targetRounded.setHours(0, 0, 0, 0);
+                    todayWib.setHours(0, 0, 0, 0);
+                    matchDate = targetRounded <= todayWib;
+                } else {
+                    matchDate = false;
+                }
+            }
+
+            return matchType && matchStatus && matchDate;
+        });
+
+        // Mengurutkan agar status IN PROGRESS berada di paling atas
+        myWorks.sort((a, b) => {
+            if (a.status === 'IN PROGRESS' && b.status !== 'IN PROGRESS') return -1;
+            if (a.status !== 'IN PROGRESS' && b.status === 'IN PROGRESS') return 1;
+            return 0;
+        });
+        
+        if (myWorks.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="11" class="px-6 py-8 text-center text-gray-500 font-medium">Tidak ada tugas untuk Anda.</td></tr>`;
+            return;
+        }
+
+        myWorks.forEach(wo => {
+            const badgeBg = wo.type === 'CORRECTIVE' ? 'bg-red-500' : 'bg-blue-500';
+            let statusBadge = "bg-amber-100 text-amber-800";
+            if(wo.status === 'OPEN') statusBadge = "bg-red-100 text-red-800";
+            else if (wo.status === 'IN PROGRESS') statusBadge = "bg-green-100 text-green-800";
+            else if (wo.status === 'COMPLETED' || wo.status === 'CLOSED') statusBadge = "bg-gray-200 text-gray-800";
+
+            function formatDuration(ms) {
+                if (ms == null || isNaN(ms)) return '-';
+                if (ms < 0) ms = 0; // Mencegah waktu negatif akibat timezone
+                let totalSeconds = Math.floor(ms / 1000);
+                let hours = Math.floor(totalSeconds / 3600);
+                let minutes = Math.floor((totalSeconds % 3600) / 60);
+                let seconds = totalSeconds % 60;
+                return `${hours} h ${minutes} m ${seconds} s`;
+            }
+
+            function formatDateTime(dateStr) {
+                return formatWibDateTime(dateStr);
+            }
+
+            const reqTime = wo.request_time ? parseWibDate(wo.request_time) : null;
+            const startTime = wo.start_time ? parseWibDate(wo.start_time) : null;
+            const endTime = wo.end_time ? parseWibDate(wo.end_time) : null;
+
+            const reqTimeStr = formatDateTime(reqTime);
+            const startTimeStr = formatDateTime(startTime);
+
+            const startDowntime = (wo.type === 'CORRECTIVE') ? reqTime : startTime;
+            const finishDowntime = endTime;
+
+            const startDowntimeStr = formatDateTime(startDowntime);
+            const finishDowntimeStr = formatDateTime(finishDowntime);
+
+            let responTimeStr = '-';
+            if (reqTime && startTime) {
+                responTimeStr = formatDuration(startTime - reqTime);
+            }
+
+            let totalDowntimeStr = '-';
+            if (startDowntime && finishDowntime) {
+                totalDowntimeStr = formatDuration(finishDowntime - startDowntime);
+            }
+
+            const html = `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4">
+                        <span class="text-[10px] font-bold uppercase tracking-wider ${badgeBg} text-white px-2 py-0.5 rounded shadow-sm">${wo.type}</span>
+                        <div class="text-xs font-mono text-gray-500 mt-1">${wo.asset_id || '-'}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-gray-800">${wo.machine_name || 'Mesin Tanpa Nama'}</div>
+                        <div class="text-xs text-gray-500">${wo.area || ''} ${wo.location || ''}</div>
+                    </td>
+                    <td class="px-6 py-4 text-xs text-gray-600 max-w-xs truncate" title="${wo.issue_desc || '-'}">
+                        ${wo.issue_desc || '-'}
+                    </td>
+                    <td class="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">${reqTimeStr}</td>
+                    <td class="px-6 py-4 text-xs font-mono text-blue-600 font-medium">${responTimeStr}</td>
+                    <td class="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">${startTimeStr}</td>
+                    <td class="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">${startDowntimeStr}</td>
+                    <td class="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">${finishDowntimeStr}</td>
+                    <td class="px-6 py-4 text-xs font-mono text-red-600 font-bold">${totalDowntimeStr}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-block px-2.5 py-0.5 rounded font-bold text-[10px] ${statusBadge}">${wo.status}</span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick='openTicketDetail(${JSON.stringify(wo).replace(/'/g, "&#39;")})' class="bg-orange-100 hover:bg-orange-200 text-orange-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm">
+                            <i class='bx bx-search mr-1'></i> Detail
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    function switchWOTab(tab) {
+        const viewTicket = document.getElementById('view-ticket');
+        const viewMyWork = document.getElementById('view-mywork');
+        const btnTicket = document.getElementById('tab-btn-ticket');
+        const btnMyWork = document.getElementById('tab-btn-mywork');
+        
+        if (tab === 'TICKET') {
+            viewTicket.classList.remove('hidden'); viewTicket.classList.add('block');
+            viewMyWork.classList.remove('block'); viewMyWork.classList.add('hidden');
+            btnTicket.className = "pb-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600 transition-colors";
+            btnMyWork.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors";
+        } else {
+            viewTicket.classList.remove('block'); viewTicket.classList.add('hidden');
+            viewMyWork.classList.remove('hidden'); viewMyWork.classList.add('block');
+            btnMyWork.className = "pb-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600 transition-colors";
+            btnTicket.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors";
+        }
+    }
+
+    function filterType(type) { currentFilterType = type; renderTickets(); }
+    function executeMasterFilter() { renderTickets(); }
+
+    function openTicketDetail(wo) {
+      currentSelectedTicket = wo;
+      
+      document.getElementById('modalWOId').style.display = 'none';
+      document.getElementById('modalTitle').innerText = wo.machine_name || 'Mesin Tanpa Nama';
+      document.getElementById('modalMachineId').innerText = wo.asset_id || '-';
+      document.getElementById('modalLocation').innerText = `${wo.area || ''} ${wo.location || ''}`.trim() || '-';
+      
+      document.getElementById('modalDesc').innerText = `"${wo.issue_desc || '-'}"`;
+      
+      const delayContainer = document.getElementById('modalDelayReasonContainer');
+      const delayReasonEl = document.getElementById('modalDelayReason');
+      if (wo.status === 'PENDING' && (wo.delay_reason || wo.reason)) {
+          if (delayContainer) delayContainer.classList.remove('hidden');
+          if (delayReasonEl) delayReasonEl.innerText = `"${wo.delay_reason || wo.reason}"`;
+      } else {
+          if (delayContainer) delayContainer.classList.add('hidden');
+      }
+
+      document.getElementById('modalUser').innerText = wo.technician || 'Not Taken Yet';
+      
+      document.getElementById('modalTime').innerText = wo.request_time ? formatWibDateTime(wo.request_time) : '-';
+
+      if (typeof downtimeInterval !== 'undefined' && downtimeInterval) clearInterval(downtimeInterval);
+      const responLabel = document.getElementById('modalResponTimeLabel');
+      const responTimeEl = document.getElementById('modalResponTime');
+      const downLabel = document.getElementById('modalTotalDowntimeLabel');
+      const downTimeEl = document.getElementById('modalTotalDowntime');
+
+      if (wo.start_time) {
+          if(responLabel) responLabel.classList.remove('hidden');
+          if(responTimeEl) {
+              responTimeEl.classList.remove('hidden');
+              const reqTime = parseWibDate(wo.request_time);
+              const startTime = parseWibDate(wo.start_time);
+              const msRespon = reqTime && startTime ? (startTime.getTime() - reqTime.getTime()) : 0;
+              responTimeEl.innerText = formatDurationGlobal(msRespon);
+          }
+          if(downLabel) downLabel.classList.remove('hidden');
+          if(downTimeEl) {
+              downTimeEl.classList.remove('hidden');
+              const reqTime = parseWibDate(wo.request_time);
+              const startTime = parseWibDate(wo.start_time);
+              const dtStart = wo.type === 'CORRECTIVE' ? (reqTime ? reqTime.getTime() : 0) : (startTime ? startTime.getTime() : 0);
+               
+              if (wo.status === 'COMPLETED' || wo.status === 'CLOSED' || wo.end_time) {
+                  const endTime = parseWibDate(wo.end_time || new Date());
+                  const dtEnd = endTime ? endTime.getTime() : new Date().getTime();
+                  downTimeEl.innerText = formatStopwatch(dtEnd - dtStart);
+              } else {
+                  function updateStopwatch() {
+                      downTimeEl.innerText = formatStopwatch(new Date().getTime() - dtStart);
+                  }
+                  updateStopwatch();
+                  downtimeInterval = setInterval(updateStopwatch, 1000);
+              }
+          }
+      } else {          if(responLabel) responLabel.classList.add('hidden');
+          if(responTimeEl) responTimeEl.classList.add('hidden');
+          if(downLabel) downLabel.classList.add('hidden');
+          if(downTimeEl) downTimeEl.classList.add('hidden');
+      }
+
+      const imgContainer = document.getElementById('modalImageContainer');
+      const imgEl = document.getElementById('modalImage');
+      if (wo.type === 'CORRECTIVE' && wo.image_path) {
+          // Cloud name: bfvxjarw
+          // API KEY: 432919999388821
+          // API SECRET: 789291439535634
+          const isCloudinary = wo.image_path.includes('res.cloudinary.com');
+          if (imgEl) imgEl.src = isCloudinary ? wo.image_path : `https://res.cloudinary.com/bfvxjarw/image/upload/${wo.image_path}`;
+          if (imgContainer) imgContainer.classList.remove('hidden');
+      } else {
+          if (imgContainer) imgContainer.classList.add('hidden');
+      }
+
+      const typeBadge = document.getElementById('modalType');
+      if (typeBadge) {
+        typeBadge.innerText = wo.type;
+        typeBadge.className = wo.type === 'CORRECTIVE' ? "mt-1 inline-block px-2.5 py-0.5 rounded font-bold text-xs text-white bg-red-500" : "mt-1 inline-block px-2.5 py-0.5 rounded font-bold text-xs text-white bg-blue-500";
+      }
+
+      const statusBadge = document.getElementById('modalStatus');
+      if (statusBadge) {
+        statusBadge.innerText = wo.status;
+        if(wo.status === 'OPEN') statusBadge.className = "mt-1 inline-block px-2.5 py-0.5 rounded font-bold text-xs bg-red-100 text-red-800";
+        else if (wo.status === 'IN PROGRESS') statusBadge.className = "mt-1 inline-block px-2.5 py-0.5 rounded font-bold text-xs bg-green-100 text-green-800";
+        else statusBadge.className = "mt-1 inline-block px-2.5 py-0.5 rounded font-bold text-xs bg-amber-100 text-amber-800";
+      }
+
+      const footerContainer = document.querySelector('#ticket-modal-box .border-t.flex.justify-end');
+      if (footerContainer) {
+          let html = '';
+          if (wo.status === 'COMPLETED' || wo.status === 'CLOSED') {
+              html = `<button onclick="closeTicketModal()" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded transition-colors">Close</button>`;
+          } else if (wo.status === 'OPEN') {
+              html = `
+                <button onclick="closeTicketModal()" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded transition-colors">Close</button>
+                <button onclick="updateTicketAction('READY')" class="px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded shadow-sm cursor-pointer"><i class='bx bx-check-circle mr-1'></i>Take Action</button>
+              `;
+          } else if (wo.status === 'IN PROGRESS' || wo.status === 'PENDING') {
+              if (wo.technician === currentUser) {
+                  const isFixing = !!wo.start_time;
+                  html = `
+                    <button onclick="window.location.href='Pickup.html'" class="px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded shadow-sm cursor-pointer"><i class='bx bx-cog mr-1'></i>Ambil Sparepart</button>
+                    ${!isFixing ? `<button onclick="handleReadyToFix()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded shadow-sm cursor-pointer"><i class='bx bx-wrench mr-1'></i>Siap Perbaiki</button>` : `<button onclick="goToCompletion()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm cursor-pointer"><i class='bx bx-check-shield mr-1'></i>Penyelesaian Form</button>`}
+                    <button onclick="openDelayModal()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded shadow-sm cursor-pointer"><i class='bx bx-time-five mr-1'></i>Tunda</button>
+                    <button onclick="updateTicketAction('CANCEL_READY')" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-red-600 text-xs font-bold rounded shadow-sm cursor-pointer">Batal Ambil</button>
+                  `;
+              } else {
+                  html = `
+                    <button onclick="closeTicketModal()" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded transition-colors">Close</button>
+                    <button class="px-3 py-2 bg-gray-200 text-gray-500 text-xs font-bold rounded shadow-sm cursor-not-allowed">Dikerjakan ${wo.technician || 'Teknisi Lain'}</button>
+                  `;
+              }
+          }
+          footerContainer.innerHTML = html;
+      }
+
+      const modal = document.getElementById('ticketModal');
+      const modalBox = document.getElementById('ticket-modal-box');
+      if (modal && modalBox) {
+        modal.classList.remove('hidden');
+        setTimeout(() => { modalBox.classList.remove('scale-95'); modalBox.classList.add('scale-100'); }, 10);
+      }
+    }
+
+    function closeTicketModal() {
+      if (typeof downtimeInterval !== 'undefined' && downtimeInterval) clearInterval(downtimeInterval);
+      const modal = document.getElementById('ticketModal');
+      const box = document.getElementById('ticket-modal-box');
+      if (modal && box) {
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+      }
+    }
+
+    function openActionModal() {
+      closeTicketModal(); 
+      const container = document.getElementById('actionButtonsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      if (currentSelectedTicket.status === 'OPEN') {
+          container.innerHTML = `
+             <button onclick="updateTicketAction('READY')" class="w-full flex items-center justify-center gap-2 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-md shadow-sm">
+                <i class='bx bx-check-circle text-xl'></i> Ambil Tiket (Ready Maintenance)
+             </button>
+          `;
+      } else if ((currentSelectedTicket.status === 'IN PROGRESS' || currentSelectedTicket.status === 'PENDING') && currentSelectedTicket.technician === currentUser) {
+          const isFixing = !!currentSelectedTicket.start_time;
+          container.innerHTML = `
+             ${!isFixing ? `<button onclick="handleReadyToFix()" class="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md shadow-sm mb-2">
+                <i class='bx bx-wrench text-xl'></i> Saya sudah siap memperbaiki
+             </button>` : `<button onclick="goToCompletion()" class="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-md shadow-sm mb-2">
+                <i class='bx bx-check-shield text-xl'></i> Penyelesaian Form
+             </button>`}
+             <button onclick="openDelayModal()" class="w-full flex items-center justify-center gap-2 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-md shadow-sm mb-2">
+                <i class='bx bx-time-five text-xl'></i> Tunda Maintenance
+             </button>
+             <button onclick="updateTicketAction('CANCEL_READY')" class="w-full flex items-center justify-center gap-2 py-3 bg-gray-200 hover:bg-gray-300 text-red-600 font-bold rounded-md shadow-sm">
+                Batal Ambil Tiket
+             </button>
+          `;
+      }
+
+      const modal = document.getElementById('actionModal');
+      const box = document.getElementById('action-modal-box');
+      if (modal && box) {
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+      }
+    }
+
+    function closeActionModal() {
+      const modal = document.getElementById('actionModal');
+      const box = document.getElementById('action-modal-box');
+      if (modal && box) {
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+      }
+    }
+
+    async function updateTicketAction(action, newDate = null, reason = null) {
+        try {
+            const res = await fetch('/api/workorders/action', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: currentSelectedTicket.id, type: currentSelectedTicket.type,
+                    action: action, technician: currentUser, new_date: newDate, reason: reason
+                })
+            });
+            if (res.ok) {
+                Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Status berhasil diperbarui!', timer: 1500, showConfirmButton: false });
+                closeTicketModal();
+                if(action === 'DELAY') closeDelayModal();
+                loadTickets(); 
+            }else {
+                const err = await res.json();
+                Swal.fire('Gagal', err.error || 'Terjadi kesalahan.', 'error');
+            }
+        } catch (e) { 
+            Swal.fire('Error', 'Gagal koneksi ke server database', 'error'); 
+        }
+    }
+
+    function openDelayModal() {
+      closeActionModal();
+      const modal = document.getElementById('delayModal');
+      const box = document.getElementById('delay-modal-box');
+      if (modal && box) {
+        modal.classList.remove('hidden');
+        setTimeout(() => box.classList.remove('scale-95').add('scale-100'), 10);
+      }
+    }
+    
+    function closeDelayModal() {
+      const box = document.getElementById('delay-modal-box');
+      const modal = document.getElementById('delayModal');
+      if (box && modal) {
+        box.classList.replace('scale-100', 'scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 150);
+      }
+    }
+    
+    function submitDelay() {
+        const d = document.getElementById('delay_date').value;
+        const r = document.getElementById('delay_reason').value;
+        if(!d || !r) return Swal.fire('Perhatian', 'Harap isi alasan dan tanggal!', 'warning');
+        updateTicketAction('DELAY', d, r);
+    }
+
+    async function handleReadyToFix() {
+        try {
+            const currentTime = new Date().toISOString();
+            
+            // Mengirim request ke Backend untuk mencatat Start Time (dan Start Downtime khusus Preventive)
+            await fetch('/api/workorders/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: currentSelectedTicket.id, 
+                    type: currentSelectedTicket.type,
+                    action: 'START_FIXING', 
+                    technician: currentUser, 
+                    start_time: currentTime,
+                    downtime_start: currentSelectedTicket.type === 'PREVENTIVE' ? currentTime : null
+                })
+            });
+
+            Swal.fire({
+                title: 'Silahkan perbaiki mesin',
+                html: `Silahkan perbaiki mesin <b>${currentSelectedTicket.machine_name || 'Tanpa Nama'}</b>.<br><br>Jika sudah selesai, klik tombol di bawah ini.`,
+                icon: 'info',
+                confirmButtonColor: '#f97316',
+                confirmButtonText: 'Ke My Work Order',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    closeTicketModal();
+                    switchWOTab('MYWORK');
+                }
+            });
+        } catch (error) {
+            console.error("Error updating ready status:", error);
+            // Tetap berikan popup meskipun ada error jaringan
+            Swal.fire({
+                title: 'Silahkan perbaiki mesin',
+                html: ` <b>${currentSelectedTicket.machine_name || 'Tanpa Nama'}</b>.<br><br>Jika sudah selesai, klik tombol di bawah ini.`,
+                icon: 'info',
+                confirmButtonColor: '#f97316',
+                confirmButtonText: 'Ke My Work Order',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    closeTicketModal();
+                    switchWOTab('MYWORK');
+                }
+            });
+        }
+    }
+
+    function goToCompletion() {
+        const targetHtml = currentSelectedTicket.type === 'CORRECTIVE' ? 'CompletionCorrective.html' : 'CompletionPreventive.html';
+        window.location.href = `${targetHtml}?asset_id=${currentSelectedTicket.asset_id}`; 
+    }
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            const icon = parentSubmenu.previousElementSibling.querySelector('.dropdown-icon');
+            if (icon) icon.style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+      
+      if (userData && userData.name) {
+          currentUser = userData.name;
+          
+          const nameEl = document.getElementById('header-user-name');
+          if (nameEl) nameEl.innerText = userData.name;
+          
+          const roleEl = document.getElementById('header-user-role');
+          if (roleEl) roleEl.innerText = userData.role || 'User';
+          
+          const avatarUrl = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+          const avatarEl = document.getElementById('header-avatar');
+          if (avatarEl) avatarEl.src = avatarUrl;
+      } else {
+          const headerUserEl = document.querySelector('header span.text-gray-600');
+          if (headerUserEl) currentUser = headerUserEl.innerText.trim() || 'Admin Rehand';
+      }
+
+      loadTickets();
+    });
+</script>
+<script src="gtranslate.js"></script>
+<script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

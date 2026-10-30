@@ -1,0 +1,859 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MTTR & MTBF Analysis - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+    /* Smooth transition for sidebar */
+    #sidebar { transition: width 0.3s ease; }
+    
+    /* Collapsed sidebar class */
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    
+    /* Hide submenus when sidebar is collapsed */
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+
+    /* Custom progress bar animation */
+    .bar-fill { transition: width 0.5s ease-in-out; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-700 font-sans h-screen flex overflow-hidden">
+
+<aside id="sidebar" class="w-60 h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0 fixed md:relative inset-y-0 left-0 z-50 transform translate-x-0 transition-transform duration-300">
+  <div class="h-14 flex items-center px-4 border-b border-gray-200 bg-white header-sidebar justify-between md:justify-start">
+    <div class="flex items-center">
+      <i onclick="toggleSidebar()" class='bx bx-menu text-2xl text-gray-800 hover:text-orange-500 cursor-pointer transition-colors mr-3 hidden md:block'></i>
+    </div>
+    <!-- Tombol Tutup (Hanya tampil di Mobile) -->
+    <i onclick="toggleSidebar()" class='bx bx-x text-2xl text-gray-800 hover:text-red-500 cursor-pointer md:hidden'></i>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2 text-sm min-h-0" id="sidebar-nav">
+    <!-- Copass semua menu navigasi Anda di sini -->
+    <a href="Index.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200">
+      <i class='bx bx-home text-xl mr-3'></i> <span class="sidebar-text">Home</span>
+    </a>
+    <a href="Schedule.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-calendar text-xl mr-3'></i> <span class="sidebar-text">Schedule</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workorder', this)">
+        <div class="flex items-center"><i class='bx bx-book text-xl mr-3'></i> <span class="sidebar-text">Work Order</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workorder" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="WorkOrder.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-desktop text-lg mr-3'></i> <span class="sidebar-text">Live Dashboard</span>
+        </a>
+        <a href="TicketWO.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-task text-lg mr-3'></i> <span class="sidebar-text">Ticket Order</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-maintenance', this)">
+        <div class="flex items-center"><i class='bx bx-wrench text-xl mr-3'></i> <span class="sidebar-text">Maintenance</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+        <div id="submenu-maintenance" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+          <a href="Preventive.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-calendar-check text-lg mr-3'></i> <span class="sidebar-text">Preventive</span>
+          </a>
+          <a href="Corrective.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-error-circle text-lg mr-3'></i> <span class="sidebar-text">Corrective</span>
+          </a>
+        </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workshop', this)">
+        <div class="flex items-center"><i class='bx bx-building text-xl mr-3'></i> <span class="sidebar-text">Supply and Placement</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workshop" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="Pickup.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cog text-lg mr-3'></i> <span class="sidebar-text">Pick Up Sparepart</span>
+        </a>
+        <a href="SparepartArrival.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-archive text-lg mr-3'></i> <span class="sidebar-text">Sparepart Arrival</span>
+        </a>
+        <a href="AssetPlacement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cube text-lg mr-3'></i> <span class="sidebar-text">Asset Placement</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- PERBAIKAN: Penulisan class diperbaiki -->
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-inventory', this)">
+        <div class="flex items-center"><i class='bx bx-package text-xl mr-3'></i> <span class="sidebar-text">Inventory</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-inventory" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="UsageLog.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-history text-lg mr-3'></i> <span class="sidebar-text">Sparepart Management</span>
+        </a>
+        <a href="AssetManagement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-spreadsheet text-lg mr-3'></i> <span class="sidebar-text">Asset Management</span>
+        </a>
+        <a href="DatabaseMaster.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-data text-lg mr-3'></i> <span class="sidebar-text">Master Database</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="mechanic.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-refresh text-lg mr-3'></i> <span class="sidebar-text">Mechanic</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-reports', this)">
+        <div class="flex items-center"><i class='bx bx-pie-chart-alt-2 text-xl mr-3'></i> <span class="sidebar-text">Reports Analysis</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-reports" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="TrackingAssets.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-radar text-lg mr-3'></i> <span class="sidebar-text">Asset History</span>
+        </a>
+        <a href="mttrmtbdanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-bar-chart text-lg mr-3'></i> <span class="sidebar-text">MTTR and MTBF Analysis</span>
+        </a>
+        <a href="TrackingSpareparts.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-folder text-lg mr-3'></i> <span class="sidebar-text">Spareparts Usage</span>
+        </a>
+        <a href="costanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-pie-chart-alt text-lg mr-3'></i> <span class="sidebar-text">Cost Analysis</span>
+        </a>
+        <a href="mechanicperformance.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-line-chart text-lg mr-3'></i> <span class="sidebar-text">Mechanic Analysis</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="UserSettings.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-user text-xl mr-3'></i> <span class="sidebar-text">User Settings</span>
+    </a>
+    
+    <!-- (Lanjutkan paste semua menu submenu-workorder, submenu-maintenance, dst di sini sesuai kode asli Anda) -->
+    
+  </nav>
+</aside>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-end items-center px-6 shrink-0 z-10 shadow-sm">
+    <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+    <main class="flex-1 overflow-y-auto p-6 md:p-8 bg-gray-50 flex flex-col relative">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 shrink-0">
+        <div>
+          <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">MTTR & MTBF Analysis</h1>
+          <p class="text-sm text-gray-500 mt-1">Key maintenance performance metrics across selected machineries.</p>
+        </div>
+        <div class="mb-6 flex justify-end shrink-0">
+          <button onclick="toggleFilterModal(true)" class="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-all duration-200 hover:shadow-md">
+              <i class='bx bx-filter-alt text-lg'></i>
+              <span>Filter Data Analisis</span>
+          </button>
+      </div>
+      </div>
+
+      
+
+      <div id="filter-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center backdrop-blur-sm transition-all duration-300">
+          <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-lg overflow-hidden m-4 transform scale-95 transition-transform duration-300">
+              <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
+                  <div class="flex items-center gap-2">
+                      <i class='bx bx-filter-alt text-orange-500 text-xl'></i>
+                      <h3 class="font-bold text-gray-800 text-base">Filter Data Analisis</h3>
+                  </div>
+                  <button onclick="toggleFilterModal(false)" class="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-gray-100 transition-colors">
+                      <i class='bx bx-x text-2xl'></i>
+                  </button>
+              </div>
+              
+              <div class="p-6 space-y-4">
+                  <div class="grid grid-cols-2 gap-4">
+                      <div class="flex flex-col">
+                          <label class="text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Area (Cutting)</label>
+                          <select id="filter-area" onchange="filterMachineListMTTR()" class="border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none w-full transition-all bg-gray-50 focus:bg-white">
+                              <option value="all">All Areas</option>
+                          </select>
+                      </div>
+                      <div class="flex flex-col">
+                          <label class="text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Location (Line)</label>
+                          <select id="filter-location" onchange="filterMachineListMTTR()" class="border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none w-full transition-all bg-gray-50 focus:bg-white">
+                              <option value="all">All Locations</option>
+                          </select>
+                      </div>
+                  </div>
+                  <div class="flex flex-col mt-4 border-t border-gray-100 pt-4">
+                      <label class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Select Machines</label>
+                      <div class="space-y-4 max-h-48 overflow-y-auto" id="filter-checkboxes">
+                          </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                      <div class="flex flex-col">
+                          <label class="text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Start Date</label>
+                          <input type="date" id="filter-start-date" class="border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none w-full transition-all bg-gray-50 focus:bg-white">
+                      </div>
+                      <div class="flex flex-col">
+                          <label class="text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">End Date</label>
+                          <input type="date" id="filter-end-date" class="border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none w-full transition-all bg-gray-50 focus:bg-white">
+                      </div>
+                  </div>
+              </div>
+
+              <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/70 flex justify-end gap-3">
+                  <button onclick="resetFilters()" class="px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-xl text-sm font-bold transition-colors shadow-sm">
+                      Reset Filter
+                  </button>
+                  <button onclick="applyMainFilters()" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center">
+                      <i class='bx bx-check mr-2 text-lg'></i> Terapkan Filter
+                  </button>
+              </div>
+          </div>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
+        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-red-50 rounded-full opacity-50 group-hover:scale-150 transition-transform"></div>
+            <div class="flex justify-between items-start mb-2 z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Avg MTTR</p>
+                <i class='bx bx-wrench text-red-500 text-xl bg-red-50 p-1.5 rounded-lg'></i>
+            </div>
+            <div class="z-10">
+                <h3 class="text-3xl font-black text-gray-800"><span id="kpi-mttr">0</span> <span class="text-sm text-gray-500 font-semibold ml-0.5">Mins</span></h3>
+            </div>
+        </div>
+        
+        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-50 rounded-full opacity-50 group-hover:scale-150 transition-transform"></div>
+            <div class="flex justify-between items-start mb-2 z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Avg MTBF</p>
+                <i class='bx bx-line-chart text-emerald-500 text-xl bg-emerald-50 p-1.5 rounded-lg'></i>
+            </div>
+            <div class="z-10">
+                <h3 class="text-3xl font-black text-gray-800"><span id="kpi-mtbf">0</span> <span class="text-sm text-gray-500 font-semibold ml-0.5">Mins</span></h3>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-orange-50 rounded-full opacity-50 group-hover:scale-150 transition-transform"></div>
+            <div class="flex justify-between items-start mb-2 z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Down</p>
+                <i class='bx bx-down-arrow-circle text-orange-500 text-xl bg-orange-50 p-1.5 rounded-lg'></i>
+            </div>
+            <div class="z-10">
+                <h3 class="text-3xl font-black text-gray-800"><span id="kpi-downtime">0</span> <span class="text-sm text-gray-500 font-semibold ml-0.5">Mins</span></h3>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-purple-50 rounded-full opacity-50 group-hover:scale-150 transition-transform"></div>
+            <div class="flex justify-between items-start mb-2 z-10">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Failure</p>
+                <i class='bx bx-error text-purple-500 text-xl bg-purple-50 p-1.5 rounded-lg'></i>
+            </div>
+            <div class="z-10">
+                <h3 class="text-3xl font-black text-gray-800"><span id="kpi-failures">0</span> <span class="text-sm text-gray-500 font-semibold ml-0.5">Times</span></h3>
+            </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[350px]">
+            <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-100">
+                <div class="bg-red-50 p-2 rounded-lg text-red-500"><i class='bx bx-line-chart text-xl'></i></div>
+                <h3 class="font-bold text-gray-800 text-lg tracking-tight">Top 5 Highest MTTR</h3>
+            </div>
+            <div class="relative w-full h-full">
+                <canvas id="mttrLineChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[350px]">
+            <div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-100">
+                <div class="bg-emerald-50 p-2 rounded-lg text-emerald-500"><i class='bx bx-line-chart text-xl'></i></div>
+                <h3 class="font-bold text-gray-800 text-lg tracking-tight">Top 5 Highest MTBF</h3>
+            </div>
+            <div class="relative w-full h-full">
+                <canvas id="mtbfLineChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+            <div class="flex items-center gap-3 mb-5 pb-3 border-b border-gray-100">
+                <div class="bg-orange-50 p-2 rounded-lg text-orange-500"><i class='bx bx-down-arrow-circle text-xl'></i></div>
+                <h3 class="font-bold text-gray-800 text-lg tracking-tight">Top 5 Total Down</h3>
+            </div>
+            <div id="list-downtime" class="space-y-4 flex-1"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+            <div class="flex items-center gap-3 mb-5 pb-3 border-b border-gray-100">
+                <div class="bg-purple-50 p-2 rounded-lg text-purple-500"><i class='bx bx-error text-xl'></i></div>
+                <h3 class="font-bold text-gray-800 text-lg tracking-tight">Top 5 Total Failure</h3>
+            </div>
+            <div id="list-failures" class="space-y-4 flex-1"></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col mb-8">
+          <div class="flex items-center gap-3 mb-5 pb-3 border-b border-gray-100">
+              <div class="bg-blue-50 p-2 rounded-lg text-blue-500"><i class='bx bx-table text-xl'></i></div>
+              <h3 class="font-bold text-gray-800 text-lg tracking-tight">Detailed Asset Metrics</h3>
+          </div>
+          <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-gray-600">
+                  <thead class="bg-gray-50 text-gray-700 uppercase font-bold text-[11px]">
+                      <tr>
+                          <th class="px-4 py-3 rounded-tl-lg whitespace-nowrap">ID</th>
+                          <th class="px-4 py-3 whitespace-nowrap">Machine Name</th>
+                          <th class="px-4 py-3 whitespace-nowrap">Area</th>
+                          <th class="px-4 py-3 whitespace-nowrap">Location (Line)</th>
+                          <th class="px-4 py-3 whitespace-nowrap">Machine Date</th>
+                          <th class="px-4 py-3 whitespace-nowrap">Uptime (Workdays)</th>
+                          <th class="px-4 py-3 whitespace-nowrap">Downtime (Minutes)</th>
+                          <th class="px-4 py-3 whitespace-nowrap">Number of Failures</th>
+                          <th class="px-4 py-3 whitespace-nowrap">MTBF (Workdays)</th>
+                          <th class="px-4 py-3 whitespace-nowrap">MTTR (Hours)</th>
+                          <th class="px-4 py-3 rounded-tr-lg whitespace-nowrap text-red-600">Predicted Failure Date</th>
+                      </tr>
+                  </thead>
+                  <tbody id="asset-table-body" class="divide-y divide-gray-100">
+                      </tbody>
+                  <tfoot class="bg-gray-50 font-bold text-gray-800" id="asset-table-footer">
+                      </tfoot>
+              </table>
+          </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let allMachines = [];
+    let currentSelectedIds = [];
+    let mttrChartInstance = null;
+    let mtbfChartInstance = null;
+    const AI_API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+
+    async function predictRemainingDays(machine) {
+      const machineAgeDays = Math.max(0, Math.floor(
+        (Date.now() - new Date(machine.machineDate).getTime()) / (24 * 60 * 60 * 1000)
+      ));
+
+      try {
+        const response = await fetch(`${AI_API_BASE}/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            Failures_30D: Number(machine.failures) || 0,
+            Historical_MTBF_Days: Number(machine.mtbfWorkdays) || 0,
+            Last_Downtime_Mins: (Number(machine.downtime) || 0) * 60,
+            Machine_Age_Days: machineAgeDays
+          })
+        });
+
+        if (!response.ok) throw new Error(`AI service returned ${response.status}`);
+        const result = await response.json();
+        const remainingDays = Number(result.predicted_remaining_days);
+        if (!Number.isFinite(remainingDays)) throw new Error('Invalid prediction result');
+        return Math.max(0, remainingDays);
+      } catch (error) {
+        console.warn(`Prediction unavailable for ${machine.name}`, error);
+        return Math.max(0, Number(machine.mtbfWorkdays) || 0);
+      }
+    }
+
+    async function fetchAnalyticsData() {
+        try {
+            const [resAnalytics, resAssets] = await Promise.all([
+                fetch('/api/analytics/mttr-mtbf'),
+                fetch('/api/assets')
+            ]);
+            
+            if (resAnalytics.ok && resAssets.ok) {
+                const rawData = await resAnalytics.json();
+                const assetsData = await resAssets.json();
+                
+                // Set Data Filter from DatabaseMaster
+                allMachines = rawData.map(m => {
+                    const asset = assetsData.find(a => a.id === m.id || (a.nama_mesin || a.name || a.machine_name) === m.name);
+                    m.area = asset ? asset.area : (m.area || ['Production', 'Packaging', 'Utilities'][Math.floor(Math.random() * 3)]);
+                    m.location = asset ? asset.location : (m.location || ['Plant 1', 'Plant 2'][Math.floor(Math.random() * 2)]);
+                    m.machineDate = asset && asset.purchase_date ? asset.purchase_date.split('T')[0] : '2026-01-15';
+                    
+                    m.mttr = m.mttr || (m.failures > 0 ? parseFloat((m.downtime / m.failures).toFixed(2)) : 0);
+                    m.mtbf = m.mtbf || (m.failures > 0 ? parseFloat(((43200 - m.downtime) / m.failures).toFixed(2)) : 0);
+                    m.availability = m.availability || parseFloat((((43200 - m.downtime) / 43200) * 100).toFixed(2));
+                    
+                    m.uptimeMins = 43200 - m.downtime;
+                    m.uptimeWorkdays = m.uptimeMins / 1440;
+                    m.mtbfWorkdays = m.failures > 0 ? (m.uptimeWorkdays / m.failures) : 0;
+                    m.mttrHours = m.failures > 0 ? (m.downtime / m.failures) / 60 : 0;
+                    
+                    const baseDateMs = new Date('2026-01-01T00:00:00Z').getTime();
+                    const randomDaysMs = Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000;
+                    m.lastRepairDate = new Date(baseDateMs + randomDaysMs);
+                    
+                    return m;
+                });
+
+                  await Promise.all(allMachines.map(async machine => {
+                    machine.predictedRemainingDays = await predictRemainingDays(machine);
+                  }));
+
+                const machineSet = new Set(), areaSet = new Set(), locSet = new Set();
+                assetsData.forEach(a => {
+                    const mName = a.nama_mesin || a.name || a.machine_name;
+                    if(mName) machineSet.add(mName);
+                    if(a.area) areaSet.add(a.area);
+                    if(a.location) locSet.add(a.location);
+                });
+                
+                const areaSelect = document.getElementById('filter-area');
+                if(areaSelect) {
+                    areaSelect.innerHTML = '<option value="all">All Areas</option>';
+                    areaSet.forEach(a => areaSelect.innerHTML += `<option value="${a}">${a}</option>`);
+                }
+                
+                const locSelect = document.getElementById('filter-location');
+                if(locSelect) {
+                    locSelect.innerHTML = '<option value="all">All Locations</option>';
+                    locSet.forEach(a => locSelect.innerHTML += `<option value="${a}">${a}</option>`);
+                }
+
+                populateFilterCheckboxesMTTR();
+
+                currentSelectedIds = allMachines.map(m => m.id);
+                renderDashboard();
+            }
+        } catch (e) {
+            console.error('Failed to fetch analytics', e);
+        }
+    }
+
+    // --- Sidebar Logics ---
+
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) {
+          sidebar.classList.remove('sidebar-collapsed');
+      }
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar) sidebar.outerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      const path = window.location.pathname.split('/').pop() || 'Index.html';
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const submenu = link.closest('[id^="submenu-"]');
+          if (submenu) {
+            submenu.classList.remove('hidden');
+            submenu.classList.add('block');
+            submenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+    loadSidebar();
+    const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'mttrmtbdanalysis.html' && link.getAttribute('href') === 'mttrmtbdanalysis.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+
+      fetchAnalyticsData();
+    });
+
+    // --- Modal Filter UI Control ---
+    function toggleFilterModal(show) {
+        const modal = document.getElementById('filter-modal');
+        if (show) {
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.firstElementChild.classList.remove('scale-95'), 10);
+        } else {
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 150);
+        }
+    }
+
+    function populateFilterCheckboxesMTTR() {
+        const filterContainer = document.getElementById('filter-checkboxes');
+        if(!filterContainer) return;
+
+        let html = `
+            <input type="text" id="filterSearch" onkeyup="filterMachineListMTTR()" placeholder="Cari nama mesin..." class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-2 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all bg-gray-50 focus:bg-white">
+            <label class="flex items-center space-x-3 cursor-pointer group mb-2">
+                <input type="checkbox" class="filter-cb w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500" value="all" checked id="cb-all">
+                <span class="text-sm text-gray-800 font-bold group-hover:text-orange-600 transition-colors">Select All Machines</span>
+            </label>
+            <hr class="border-gray-100 mb-2">
+            <div id="machine-items" class="space-y-2">
+        `;
+
+        allMachines.forEach(m => {
+            html += `
+            <label class="flex items-center space-x-3 cursor-pointer group machine-item" data-name="${m.name.toLowerCase()}" data-location="${m.location || 'all'}" data-area="${m.area || 'all'}">
+                <input type="checkbox" class="filter-cb w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500" value="${m.id}" checked>
+                <span class="text-sm text-gray-700 font-medium group-hover:text-orange-600 transition-colors">${m.name}</span>
+            </label>
+            `;
+        });
+        html += `</div>`;
+        filterContainer.innerHTML = html;
+        attachFilterEventsMTTR();
+    }
+
+    function filterMachineListMTTR() {
+        const query = document.getElementById('filterSearch').value.toLowerCase();
+        const filterLocation = document.getElementById('filter-location').value;
+        const filterArea = document.getElementById('filter-area').value;
+        
+        document.querySelectorAll('.machine-item').forEach(el => {
+            const matchQuery = el.getAttribute('data-name').includes(query);
+            const matchLocation = filterLocation === "all" || el.getAttribute('data-location') === filterLocation;
+            const matchArea = filterArea === "all" || el.getAttribute('data-area') === filterArea;
+            el.style.display = (matchQuery && matchLocation && matchArea) ? 'flex' : 'none';
+        });
+    }
+
+    function attachFilterEventsMTTR() {
+        const checkboxes = document.querySelectorAll('.filter-cb:not([value="all"])');
+        const allCheckbox = document.querySelector('.filter-cb[value="all"]');
+
+        if(allCheckbox) {
+            allCheckbox.addEventListener('change', (e) => {
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+            });
+        }
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                const allChecked = Array.from(checkboxes).every(c => c.checked);
+                if(allCheckbox) allCheckbox.checked = allChecked;
+            });
+        });
+    }
+
+    function resetFilters() {
+        document.getElementById('filter-area').value = 'all';
+        document.getElementById('filter-location').value = 'all';
+        document.getElementById('filter-start-date').value = '';
+        document.getElementById('filter-end-date').value = '';
+        if(document.getElementById('filterSearch')) document.getElementById('filterSearch').value = '';
+        
+        const allCheckbox = document.querySelector('.filter-cb[value="all"]');
+        if(allCheckbox) {
+            allCheckbox.checked = true;
+            document.querySelectorAll('.filter-cb:not([value="all"])').forEach(cb => cb.checked = true);
+        }
+        
+        filterMachineListMTTR();
+        applyMainFilters();
+    }
+
+    // --- Filter Logic Execution ---
+    function applyMainFilters() {
+        const areaFilter = document.getElementById('filter-area').value;
+        const locationFilter = document.getElementById('filter-location').value;
+        
+        let selectedAssetIds = [];
+        const allCheckbox = document.querySelector('.filter-cb[value="all"]');
+        if(allCheckbox && allCheckbox.checked) {
+            selectedAssetIds = ['all'];
+        } else {
+            document.querySelectorAll('.filter-cb:not([value="all"])').forEach(cb => {
+                if (cb.checked) selectedAssetIds.push(cb.value);
+            });
+        }
+        
+        const filteredMachines = allMachines.filter(m => {
+            let matchMachine = selectedAssetIds.includes('all') || selectedAssetIds.includes(m.id.toString()) || selectedAssetIds.includes(m.id);
+            let matchArea = areaFilter === 'all' || m.area === areaFilter;
+            let matchLocation = locationFilter === 'all' || m.location === locationFilter;
+            return matchMachine && matchArea && matchLocation;
+        });
+        
+        currentSelectedIds = filteredMachines.map(m => m.id);
+        renderDashboard();
+        toggleFilterModal(false); // Auto close modal after applying
+    }
+
+    // --- Render Functions ---
+    function renderDashboard() {
+        const filteredData = allMachines.filter(m => currentSelectedIds.includes(m.id));
+
+        if (filteredData.length === 0) {
+            document.getElementById('kpi-mttr').innerText = '0';
+            document.getElementById('kpi-mtbf').innerText = '0';
+            document.getElementById('kpi-downtime').innerText = '0';
+            document.getElementById('kpi-failures').innerText = '0';
+            
+            const emptyMsg = `<div class="text-sm text-gray-400 italic text-center py-4">No data available</div>`;
+            document.getElementById('list-downtime').innerHTML = emptyMsg;
+            document.getElementById('list-failures').innerHTML = emptyMsg;
+            document.getElementById('asset-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-400">No data available</td></tr>`;
+            document.getElementById('asset-table-footer').innerHTML = '';
+            
+            renderLineChart([], 'mttr', 'mttrLineChart', 'MTTR (Mins)', '#ef4444');
+            renderLineChart([], 'mtbf', 'mtbfLineChart', 'MTBF (Mins)', '#10b981');
+            return;
+        }
+
+        // 1. Calculate KPI Totals/Averages
+        let totalDowntime = 0;
+        let totalFailures = 0;
+
+        filteredData.forEach(m => {
+            totalDowntime += m.downtime;
+            totalFailures += m.failures;
+        });
+
+        const assumedTotalTime = 43200 * filteredData.length;
+        const avgMttr = totalFailures > 0 ? (totalDowntime / totalFailures).toFixed(1) : 0;
+        const avgMtbf = totalFailures > 0 ? ((assumedTotalTime - totalDowntime) / totalFailures).toFixed(1) : 0;
+
+        document.getElementById('kpi-mttr').innerText = avgMttr;
+        document.getElementById('kpi-mtbf').innerText = avgMtbf;
+        document.getElementById('kpi-downtime').innerText = totalDowntime.toFixed(1);
+        document.getElementById('kpi-failures').innerText = totalFailures;
+
+        // 2. Render Charts & Bars
+        renderLineChart(filteredData, 'mttr', 'mttrLineChart', 'MTTR (Mins)', '#ef4444');
+        renderLineChart(filteredData, 'mtbf', 'mtbfLineChart', 'MTBF (Mins)', '#10b981');
+        
+        renderTop5Bar(filteredData, 'downtime', 'list-downtime', 'Mins', 'bg-orange-500', 'bg-orange-100');
+        renderTop5Bar(filteredData, 'failures', 'list-failures', 'Times', 'bg-purple-500', 'bg-purple-100');
+
+        // 3. Render Table
+        renderAssetTable(filteredData, totalDowntime, totalFailures);
+    }
+
+    // Rendering Chart.js Line Charts
+    function renderLineChart(data, key, canvasId, labelText, colorCode) {
+        const sorted = [...data].sort((a, b) => b[key] - a[key]).slice(0, 5);
+        
+        const startDate = document.getElementById('filter-start-date').value;
+        const endDate = document.getElementById('filter-end-date').value;
+        let xLabels = [];
+        if (startDate && endDate) xLabels = [startDate, endDate];
+        else if (startDate) xLabels = [startDate, 'Today'];
+        else if (endDate) xLabels = ['Start', endDate];
+        else xLabels = ['Past', 'Present'];
+
+        const lineColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'];
+        
+        const datasets = sorted.map((d, index) => {
+            return {
+                label: d.name,
+                data: xLabels.map(() => d[key]),
+                borderColor: lineColors[index % lineColors.length],
+                backgroundColor: lineColors[index % lineColors.length] + '33',
+                borderWidth: 3,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: lineColors[index % lineColors.length],
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                fill: false,
+                tension: 0.3
+            };
+        });
+        
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        
+        if (canvasId === 'mttrLineChart' && mttrChartInstance) { mttrChartInstance.destroy(); }
+        if (canvasId === 'mtbfLineChart' && mtbfChartInstance) { mtbfChartInstance.destroy(); }
+
+        const config = {
+            type: 'line',
+            data: {
+                labels: xLabels,
+                datasets: datasets
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: '#f3f4f6' },
+                        title: { display: true, text: labelText, font: { size: 11, weight: 'bold' } }
+                    },
+                    x: { 
+                        grid: { display: false },
+                        title: { display: true, text: 'Date Range', font: { size: 11, weight: 'bold' } }
+                    }
+                }
+            }
+        };
+
+        if (canvasId === 'mttrLineChart') { mttrChartInstance = new Chart(ctx, config); }
+        if (canvasId === 'mtbfLineChart') { mtbfChartInstance = new Chart(ctx, config); }
+    }
+
+    // Original Top 5 Bar Charts for Downtime and Failures
+    function renderTop5Bar(data, key, elementId, unit, colorClass, bgColorClass) {
+        const container = document.getElementById(elementId);
+        const sorted = [...data].sort((a, b) => b[key] - a[key]).slice(0, 5);
+        const maxVal = sorted.length > 0 ? sorted[0][key] : 1;
+
+        let html = '';
+        sorted.forEach((item, index) => {
+            const percentage = (item[key] / maxVal) * 100;
+            html += `
+                <div class="relative pt-1">
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-sm font-bold text-gray-700 truncate pr-2"><span class="text-gray-400 mr-1">#${index+1}</span> ${item.name}</span>
+                        <span class="text-sm font-black text-gray-800 whitespace-nowrap">${item[key]} <span class="text-[10px] font-semibold text-gray-500">${unit}</span></span>
+                    </div>
+                    <div class="overflow-hidden h-2.5 text-xs flex rounded-full ${bgColorClass}">
+                        <div style="width: ${percentage}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${colorClass} bar-fill rounded-full"></div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    // Rendering Detailed Asset Table
+    function renderAssetTable(data, sumDowntime, sumFailures) {
+        const tbody = document.getElementById('asset-table-body');
+        const tfoot = document.getElementById('asset-table-footer');
+        
+        let html = '';
+        let sumUptimeWorkdays = 0;
+        let sumMttrHours = 0;
+        let sumMtbfWorkdays = 0;
+
+        data.forEach(item => {
+            sumUptimeWorkdays += item.uptimeWorkdays;
+            sumMttrHours += item.mttrHours;
+            sumMtbfWorkdays += item.mtbfWorkdays;
+
+            const predictedDate = new Date(Date.now() + item.predictedRemainingDays * 24 * 60 * 60 * 1000);
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedDate = predictedDate.toLocaleDateString('en-US', dateOptions);
+            
+            const predictionText = `${item.predictedRemainingDays.toFixed(1)} days remaining (${formattedDate})`;
+
+            html += `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3 font-medium text-gray-800">${item.id}</td>
+                    <td class="px-4 py-3">${item.name}</td>
+                    <td class="px-4 py-3">${item.area}</td>
+                    <td class="px-4 py-3">${item.location}</td>
+                    <td class="px-4 py-3">${item.machineDate}</td>
+                    <td class="px-4 py-3">${item.uptimeWorkdays.toFixed(1)}</td>
+                    <td class="px-4 py-3">${item.downtime.toFixed(1)}</td>
+                    <td class="px-4 py-3">${item.failures}</td>
+                    <td class="px-4 py-3">${item.mtbfWorkdays.toFixed(1)}</td>
+                    <td class="px-4 py-3">${item.mttrHours.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-red-600 font-semibold text-xs bg-red-50/30">
+                        <i class='bx bx-error-circle mr-1'></i> ${predictionText}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+
+        // Footer Totals & Averages
+        const totalUptimeMins = sumUptimeWorkdays * 1440;
+        const trueAvgMtbfMins = sumFailures > 0 ? (totalUptimeMins / sumFailures) : 0;
+        const trueAvgMtbfWorkdays = trueAvgMtbfMins / 1440;
+        
+        const trueAvgMttrMins = sumFailures > 0 ? (sumDowntime / sumFailures) : 0;
+        const trueAvgMttrHours = trueAvgMttrMins / 60;
+        
+        tfoot.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-4 py-3 text-right uppercase text-[11px] text-gray-500">Total / Averages</td>
+                <td class="px-4 py-3 text-orange-600 font-black">${sumUptimeWorkdays.toFixed(1)}</td>
+                <td class="px-4 py-3 text-orange-600 font-black">${sumDowntime.toFixed(1)}</td>
+                <td class="px-4 py-3 text-orange-600 font-black">${sumFailures}</td>
+                <td class="px-4 py-3 text-orange-600">${trueAvgMtbfWorkdays.toFixed(1)}</td>
+                <td class="px-4 py-3 text-orange-600">${trueAvgMttrHours.toFixed(2)}</td>
+                <td class="px-4 py-3 text-gray-400 text-xs italic">-</td>
+            </tr>
+        `;
+    }
+  </script>
+  <script src="gtranslate.js"></script>
+  <script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

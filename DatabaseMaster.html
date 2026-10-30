@@ -1,0 +1,1229 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Master Database - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text, .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link, .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+    <main class="flex-1 overflow-y-auto p-8 bg-gray-50 flex flex-col">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-gray-200 pb-4 mb-6 shrink-0">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">CMMS Master Database</h1>
+          <p class="text-xs text-gray-500 mt-1">Primary database structure for Asset, Spare Part, User, and Work Order management</p>
+        </div>
+        
+        <div class="flex flex-wrap gap-3 self-start sm:self-center items-center">
+            <div class="relative">
+                <button onclick="document.getElementById('filterDropdown').classList.toggle('hidden')" class="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium shadow-sm transition-all bg-white text-gray-700 h-full">
+                    <i class='bx bx-filter text-blue-500 mr-2 text-xl'></i>
+                    Filter
+                </button>
+                
+                <div id="filterDropdown" class="hidden absolute right-0 mt-2 w-[400px] bg-white rounded-2xl shadow-xl z-50 border border-gray-100 p-6 text-gray-800">
+                    <div class="text-center mb-5">
+                        <h3 class="text-lg font-bold text-gray-900">Filter Database</h3>
+                        <p class="text-xs text-gray-500 mt-1">Start your process with solution from our community</p>
+                    </div>
+                    <div class="relative mb-4">
+                        <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg'></i>
+                        <input type="text" id="searchInput" onkeyup="renderCurrentTable()" placeholder="Search data..." 
+                               class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-all bg-gray-50">
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="dbFilter1" onchange="renderCurrentTable()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500 bg-white">
+                            <option value="">Filter 1</option>
+                        </select>
+                        <select id="dbFilter2" onchange="renderCurrentTable()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500 bg-white">
+                            <option value="">Filter 2</option>
+                        </select>
+                        <select id="dbFilter3" onchange="renderCurrentTable()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500 bg-white">
+                            <option value="">Filter 3</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="document.getElementById('excel-upload').click()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-md text-sm font-semibold transition-colors shadow-sm flex items-center">
+                <i class='bx bx-upload mr-2 text-lg'></i> Add using Excel
+            </button>
+            <input type="file" id="excel-upload" class="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onchange="handleFileUpload(event)">
+            
+            <button onclick="openAddModal()" class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2.5 rounded-md text-sm font-semibold transition-colors shadow-sm flex items-center">
+                <i class='bx bx-plus-circle mr-2 text-lg'></i> Add New Items
+            </button>
+        </div>
+      </div>
+
+      <div class="flex border-b border-gray-200 text-sm font-medium text-gray-500 mb-6 shrink-0 bg-white p-1 rounded-lg shadow-sm w-max border">
+        <button id="tab-asset-btn" onclick="switchTab('ASSET')" class="px-6 py-2.5 rounded-md transition-all duration-200 bg-orange-500 text-white font-bold shadow-sm">
+            <i class='bx bx-cube-alt mr-2 text-lg'></i>Database Asset
+        </button>
+        <button id="tab-part-btn" onclick="switchTab('SPAREPART')" class="px-6 py-2.5 rounded-md transition-all duration-200 hover:text-gray-800 text-gray-500">
+            <i class='bx bx-cog mr-2 text-lg'></i>Database Sparepart
+        </button>
+        <button id="tab-user-btn" onclick="switchTab('USER')" class="px-6 py-2.5 rounded-md transition-all duration-200 hover:text-gray-800 text-gray-500">
+            <i class='bx bx-user mr-2 text-lg'></i>Database User
+        </button>
+        <button id="tab-wo-btn" onclick="switchTab('WORKORDER')" class="px-6 py-2.5 rounded-md transition-all duration-200 hover:text-gray-800 text-gray-500">
+            <i class='bx bx-task mr-2 text-lg'></i>Database Work Order
+        </button>
+      </div>
+
+      <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-0">
+        <div class="flex-1 overflow-x-auto overflow-y-auto">
+          
+          <table class="w-full text-left border-collapse min-w-[1200px]" id="table-asset">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 sticky top-0 z-10">
+                <th class="px-6 py-5 font-bold">Asset Number</th>
+                <th class="px-6 py-5 font-bold">Serial Number</th>
+                <th class="px-6 py-5 font-bold">Machine Name</th>
+                <th class="px-6 py-5 font-bold">Brand</th>
+                <th class="px-6 py-5 font-bold">Machine Type</th>
+                <th class="px-6 py-5 font-bold">Area</th>
+                <th class="px-6 py-5 font-bold">Location</th>
+                <th class="px-6 py-5 font-bold">Department</th>
+                <th class="px-6 py-5 font-bold">Purchase Date</th>
+                <th class="px-6 py-5 font-bold text-center w-28">Action</th>
+              </tr>
+            </thead>
+            <tbody id="asset-tbody" class="text-sm text-gray-700 divide-y divide-gray-100">
+            </tbody>
+          </table>
+
+          <table class="w-full text-left border-collapse min-w-[1200px] hidden" id="table-sparepart">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 sticky top-0 z-10">
+                <th class="px-6 py-5 font-bold">ID Part</th>
+                <th class="px-6 py-5 font-bold">Supplier Name</th>
+                <th class="px-6 py-5 font-bold">Material Name</th>
+                <th class="px-6 py-5 font-bold w-1/4">Item Short Text</th>
+                <th class="px-6 py-5 font-bold text-center">Stock</th>
+                <th class="px-6 py-5 font-bold">Purchase Unit</th>
+                <th class="px-6 py-5 font-bold text-center">Min. Stock</th>
+                <th class="px-6 py-5 font-bold">Storage Location</th>
+                <th class="px-6 py-5 font-bold">Price per Unit</th>
+                <th class="px-6 py-5 font-bold text-center w-28">Action</th>
+              </tr>
+            </thead>
+            <tbody id="sparepart-tbody" class="text-sm text-gray-700 divide-y divide-gray-100">
+            </tbody>
+          </table>
+
+          <table class="w-full text-left border-collapse min-w-[1000px] hidden" id="table-user">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 sticky top-0 z-10">
+                <th class="px-6 py-5 font-bold">User ID</th>
+                <th class="px-6 py-5 font-bold">Name</th>
+                <th class="px-6 py-5 font-bold">Email</th>
+                <th class="px-6 py-5 font-bold text-orange-600">Role Akses</th>
+                <th class="px-6 py-5 font-bold">Password</th>
+                <th class="px-6 py-5 font-bold">Department</th>
+                <th class="px-6 py-5 font-bold">Specialization</th>
+                <th class="px-6 py-5 font-bold">Phone Number</th>
+                <th class="px-6 py-5 font-bold">Tanggal Join</th>
+                <th class="px-6 py-5 font-bold text-center w-28">Action</th>
+              </tr>
+            </thead>
+            <tbody id="user-tbody" class="text-sm text-gray-700 divide-y divide-gray-100">
+            </tbody>
+          </table>
+
+          <table class="w-full text-left border-collapse min-w-[1600px] hidden" id="table-wo">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 sticky top-0 z-10">
+                <th class="px-6 py-5 font-bold">WO ID</th>
+                <th class="px-6 py-5 font-bold">Asset ID</th>
+                <th class="px-6 py-5 font-bold">Issue Description</th>
+                <th class="px-6 py-5 font-bold">Priority</th>
+                <th class="px-6 py-5 font-bold">Type</th>
+                <th class="px-6 py-5 font-bold">Status</th>
+                <th class="px-6 py-5 font-bold">Tech Name</th>
+                <th class="px-6 py-5 font-bold">Submission</th>
+                <th class="px-6 py-5 font-bold">Completion</th>
+                <th class="px-6 py-5 font-bold text-center">Downtime (Min)</th>
+                <th class="px-6 py-5 font-bold text-center">Img Sebelum</th>
+                <th class="px-6 py-5 font-bold text-center">Img Sesudah</th>
+                <th class="px-6 py-5 font-bold text-center w-28">Action</th>
+              </tr>
+            </thead>
+            <tbody id="wo-tbody" class="text-sm text-gray-700 divide-y divide-gray-100">
+            </tbody>
+          </table>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="masterModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-[600px] overflow-hidden transform transition-all scale-95" id="modal-box">
+      <div class="bg-gray-800 px-6 py-4 text-white flex justify-between items-center">
+        <h3 id="modalTitle" class="font-bold text-lg uppercase tracking-wide">Add New Item</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-red-400 transition-colors"><i class='bx bx-x text-3xl'></i></button>
+      </div>
+      
+      <div class="p-6 overflow-y-auto max-h-[75vh] space-y-4" id="modal-fields-container">
+      </div>
+
+      <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+        <button id="modalDeleteBtn" onclick="executeDelete()" class="text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center border border-transparent hover:border-red-200 hidden">
+            <i class='bx bx-trash mr-1 text-lg'></i> Hapus Data
+        </button>
+        <div class="flex gap-2 ml-auto">
+            <button onclick="closeModal()" class="px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-bold rounded-lg transition-colors">Batal</button>
+            <button onclick="executeSave()" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-lg shadow-sm transition-colors">Simpan Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
+    <div class="bg-white rounded-xl shadow-2xl w-[600px] overflow-hidden transform transition-all scale-95" id="history-modal-box">
+      <div class="bg-green-600 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center">
+            <i class='bx bx-history mr-2 text-xl'></i> History Pengambilan
+        </h3>
+        <button onclick="closeHistoryModal()" class="text-green-200 hover:text-white transition-colors">
+          <i class='bx bx-x text-3xl'></i>
+        </button>
+      </div>
+      <div class="p-6 max-h-[60vh] overflow-y-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
+                    <th class="px-4 py-3 font-bold">Tanggal</th>
+                    <th class="px-4 py-3 font-bold">Teknisi</th>
+                    <th class="px-4 py-3 font-bold text-center">Jumlah</th>
+                    <th class="px-4 py-3 font-bold">Work Order</th>
+                </tr>
+            </thead>
+            <tbody id="history-table-body" class="text-sm text-gray-700 divide-y divide-gray-100">
+            </tbody>
+        </table>
+      </div>
+      <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+        <button onclick="closeHistoryModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden flex flex-col items-center justify-center z-[100] transition-opacity">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center max-w-sm">
+        <i class='bx bx-loader-alt bx-spin text-6xl text-orange-500 mb-4'></i>
+        <h3 class="text-xl font-bold text-gray-800">Memproses Data Excel...</h3>
+        <p class="text-sm text-gray-500 mt-2">Harap tunggu sebentar, sistem sedang membaca file dan menyimpannya ke PostgreSQL.</p>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+    let assetsData = []; 
+    let sparepartsData = [];
+    let usersData = []; 
+    let woData = []; // State baru untuk Work Order
+    let logsData = [];
+
+    // Fungsi ini untuk mengambil data master Asset Sparepart User Work Order dan Logs dari server backend API secara bersamaan 
+    async function fetchMasterData() {
+        try {
+            const [resAsset, resPart, resUser, resWo, resLogs] = await Promise.all([
+                fetch('/api/assets').catch(() => null),
+                fetch('/api/spareparts').catch(() => null),
+                fetch('/api/users').catch(() => null),
+                fetch('/api/workorders').catch(() => null), // Fetch WO
+                fetch('/api/sparepart-logs').catch(() => null)
+            ]);
+            if (resAsset && resAsset.ok) assetsData = await resAsset.json();
+            if (resPart && resPart.ok) sparepartsData = await resPart.json();
+            if (resUser && resUser.ok) usersData = await resUser.json(); 
+            if (resWo && resWo.ok) woData = await resWo.json();
+            if (resLogs && resLogs.ok) logsData = await resLogs.json();
+        } catch (e) {
+            console.error("Gagal terhubung ke database backend:", e);
+        }
+        switchTab(currentTab); // Menggunakan switchTab agar filter Dropdown otomatis dirender
+    }
+
+    // Fungsi ini untuk memuat komponen sidebar secara dinamis dari file eskternal (Sidebar.html) dan menyisipkan ke dalam halaman utama 
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    // Fungsi ini untuk menandai menu di sidebar yang sedang aktif berdasarkan path URL saat ini agar pengguna mengetahui posisi halamannya 
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'AssetManagement.html' && link.getAttribute('href') === 'AssetManagement.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      
+      // Jika data ditemukan, masukkan ke dalam HTML
+      if (userData) {
+          // Menampilkan Nama
+          document.getElementById('header-user-name').innerText = userData.name;
+          
+          // Menampilkan Role (jika kosong, default ke 'User')
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          
+          // Menampilkan Foto Profil
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+          
+          // Pengecekan Role Akses Halaman Utama
+          const allowedRoles = ['Admin Asset', 'Admin Sparepart', 'Admin Developer'];
+          if (!allowedRoles.includes(userData.role)) {
+              const mainElement = document.querySelector('main');
+              mainElement.style.filter = 'blur(5px)';
+              mainElement.style.pointerEvents = 'none';
+              mainElement.style.userSelect = 'none';
+              
+              // Menonaktifkan secara paksa seluruh tombol (termasuk ke-4 Tab) yang ada di dalam konten
+              mainElement.querySelectorAll('button').forEach(btn => {
+                  btn.disabled = true;
+                  btn.style.pointerEvents = 'none';
+              });
+              
+              Swal.fire({
+                  icon: 'error',
+                  title: 'Akses Ditolak',
+                  text: 'Role akses anda bukan Admin Asset, Admin Sparepart, atau Admin Developer.',
+                  allowOutsideClick: false,
+                  showConfirmButton: false,
+                  backdrop: false // Mematikan overlay bawaan Swal agar sidebar tetap bisa diklik
+              });
+              return;
+          }
+      }
+      fetchMasterData(); 
+    });
+
+    let currentTab = 'ASSET'; 
+    let currentEditId = null; 
+
+    // Fungsi ini untuk beralih antar tab (Asset Sparepart User WorkOrder) , memperbarui tampilan yang relevan dan meyiapkan parameter khusus untuk setiap tab
+    function switchTab(tab) {
+        const userData = JSON.parse(localStorage.getItem('userData')) || {};
+        const role = userData.role || 'User';
+
+        if (role !== 'Admin Developer') {
+            if (tab === 'ASSET' && !['Admin Asset', 'Admin Sparepart'].includes(role)) {
+                Swal.fire('Akses Ditolak', 'Role akses anda bukan Admin Asset atau Admin Sparepart.', 'error');
+                return;
+            }
+            if (tab === 'SPAREPART' && role !== 'Admin Sparepart') {
+                Swal.fire('Akses Ditolak', 'Role akses anda bukan Admin Sparepart.', 'error');
+                return;
+            }
+            if (tab === 'USER') {
+                Swal.fire('Akses Ditolak', 'Role akses anda bukan Admin Developer.', 'error');
+                return;
+            }
+            if (tab === 'WORKORDER' && role !== 'Admin Asset') {
+                Swal.fire('Akses Ditolak', 'Role akses anda bukan Admin Asset atau Admin Developer.', 'error');
+                return;
+            }
+        }
+
+        currentTab = tab;
+        document.getElementById('searchInput').value = ""; 
+        
+        const btns = {
+            'ASSET': document.getElementById('tab-asset-btn'), 
+            'SPAREPART': document.getElementById('tab-part-btn'), 
+            'USER': document.getElementById('tab-user-btn'),
+            'WORKORDER': document.getElementById('tab-wo-btn')
+        };
+        const tables = { 
+            'ASSET': document.getElementById('table-asset'), 
+            'SPAREPART': document.getElementById('table-sparepart'), 
+            'USER': document.getElementById('table-user'),
+            'WORKORDER': document.getElementById('table-wo')
+        };
+
+        for(let key in btns) {
+            if(key === tab) {
+                btns[key].className = "px-6 py-2.5 rounded-md transition-all duration-200 bg-orange-500 text-white font-bold shadow-sm";
+                tables[key].classList.remove('hidden');
+            } else {
+                btns[key].className = "px-6 py-2.5 rounded-md transition-all duration-200 hover:text-gray-800 text-gray-500";
+                tables[key].classList.add('hidden');
+            }
+        }
+
+        // Render Dynamic Filters berdasarkan Tab aktif
+        const f1 = document.getElementById('dbFilter1'), f2 = document.getElementById('dbFilter2'), f3 = document.getElementById('dbFilter3');
+        f1.innerHTML = ''; f2.innerHTML = ''; f3.innerHTML = '';
+        f1.classList.remove('hidden'); f2.classList.remove('hidden'); f3.classList.remove('hidden');
+
+        if (tab === 'ASSET') {
+            const areaSet = new Set(), locSet = new Set(), deptSet = new Set();
+            assetsData.forEach(d => { if(d.area) areaSet.add(d.area); if(d.location) locSet.add(d.location); if(d.department) deptSet.add(d.department); });
+            f1.innerHTML = '<option value="">All Area</option>'; areaSet.forEach(a => f1.innerHTML += `<option value="${a}">${a}</option>`);
+            f2.innerHTML = '<option value="">All Location</option>'; locSet.forEach(a => f2.innerHTML += `<option value="${a}">${a}</option>`);
+            f3.innerHTML = '<option value="">All Department</option>'; deptSet.forEach(a => f3.innerHTML += `<option value="${a}">${a}</option>`);
+        } else if (tab === 'SPAREPART') {
+            const storageSet = new Set();
+            sparepartsData.forEach(d => { if(d.storage) storageSet.add(d.storage); });
+            f1.innerHTML = '<option value="">All Storage</option>'; storageSet.forEach(a => f1.innerHTML += `<option value="${a}">${a}</option>`);
+            f2.classList.add('hidden'); f3.classList.add('hidden');
+        } else if (tab === 'USER') {
+            const roleSet = new Set(), deptSet = new Set();
+            usersData.forEach(d => { if(d.role) roleSet.add(d.role); if(d.department) deptSet.add(d.department); });
+            f1.innerHTML = '<option value="">All Role</option>'; roleSet.forEach(a => f1.innerHTML += `<option value="${a}">${a}</option>`);
+            f2.innerHTML = '<option value="">All Department</option>'; deptSet.forEach(a => f2.innerHTML += `<option value="${a}">${a}</option>`);
+            f3.classList.add('hidden');
+        } else if (tab === 'WORKORDER') {
+            const typeSet = new Set(), statusSet = new Set(), prioritySet = new Set();
+            woData.forEach(d => { 
+                if(d.work_type || d.type) typeSet.add(d.work_type || d.type); 
+                if(d.status) statusSet.add(d.status); 
+                if(d.priority) prioritySet.add(d.priority); 
+            });
+            f1.innerHTML = '<option value="">All Type</option>'; typeSet.forEach(a => f1.innerHTML += `<option value="${a}">${a}</option>`);
+            f2.innerHTML = '<option value="">All Status</option>'; statusSet.forEach(a => f2.innerHTML += `<option value="${a}">${a}</option>`);
+            f3.innerHTML = '<option value="">All Priority</option>'; prioritySet.forEach(a => f3.innerHTML += `<option value="${a}">${a}</option>`);
+        }
+
+        renderCurrentTable();
+    }
+
+    // Fungsi ini untuk memformat string tanggal merah menjadi string tanggal dan waktu standar
+    function formatDateStr(dateStr) {
+        if(!dateStr) return '-';
+        const d = new Date(dateStr);
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    // Fungsi ini untuk menyembunyikan atau menampilkan teks kata sandi pada tabel pengguna 
+    function togglePassword(id, pass) {
+        const span = document.getElementById(`pw-${id}`);
+        const icon = document.getElementById(`pw-icon-${id}`);
+        if(span.innerText === '***') {
+            span.innerText = pass;
+            icon.classList.replace('bx-show', 'bx-hide');
+        } else {
+            span.innerText = '***';
+            icon.classList.replace('bx-hide', 'bx-show');
+        }
+    }
+
+    // Fungsi ini untuk memvalidasi dan memformat path/URL gambar agar dapat digunakan sebagai link valid
+    function getImagePath(path) {
+        if (!path) return '-';
+        let cleanPath = path.replace(/\\/g, '/');
+        if (!cleanPath.startsWith('uploads/') && !cleanPath.startsWith('http')) {
+            cleanPath = 'uploads/' + cleanPath;
+        }
+        return `<a href="/${cleanPath}" target="_blank" class="text-blue-500 hover:underline">View</a>`;
+    }
+
+    // Fungsi ini untuk memfilter data array dan merender baris HTMl ke dalam tabel yang sedang aktif berdasarkan nilai pencarian
+    function renderCurrentTable() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const f1Val = document.getElementById('dbFilter1') ? document.getElementById('dbFilter1').value : '';
+        const f2Val = document.getElementById('dbFilter2') ? document.getElementById('dbFilter2').value : '';
+        const f3Val = document.getElementById('dbFilter3') ? document.getElementById('dbFilter3').value : '';
+
+        if(currentTab === 'ASSET') {
+            const tbody = document.getElementById('asset-tbody');
+            tbody.innerHTML = '';
+            
+            const filtered = assetsData.filter(item => {
+                const matchSearch = (item.nomor_asset || '').toLowerCase().includes(query) ||
+                                    (item.machine_name || '').toLowerCase().includes(query) ||
+                                    (item.machine_id || '').toLowerCase().includes(query) ||
+                                    (item.location || '').toLowerCase().includes(query);
+                const matchF1 = f1Val === '' || item.area === f1Val;
+                const matchF2 = f2Val === '' || item.location === f2Val;
+                const matchF3 = f3Val === '' || item.department === f3Val;
+                return matchSearch && matchF1 && matchF2 && matchF3;
+            });
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-5 font-mono text-gray-500">${item.nomor_asset || '-'}</td>
+                    <td class="px-6 py-5 font-mono text-gray-500">${item.machine_id || '-'}</td>
+                    <td class="px-6 py-5 font-semibold text-gray-800">${item.machine_name || '-'}</td>
+                    <td class="px-6 py-5">${item.brand || '-'}</td>
+                    <td class="px-6 py-5">${item.machine_type || '-'}</td>
+                    <td class="px-6 py-5 font-medium text-gray-700">${item.area || '-'}</td>
+                    <td class="px-6 py-5 font-medium text-orange-600 flex items-center"><i class='bx bx-map-pin mr-1.5 text-lg'></i> ${item.location || '-'}</td>
+                    <td class="px-6 py-5">${item.department || '-'}</td>
+                    <td class="px-6 py-5 text-gray-500">${item.purchase_date ? item.purchase_date.split('T')[0] : '-'}</td>
+                    <td class="px-6 py-5 text-center">
+                        <button onclick="openEditModal('${item.machine_id}')" class="text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 transition-all text-base"><i class='bx bx-edit-alt'></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else if(currentTab === 'SPAREPART') {
+            const tbody = document.getElementById('sparepart-tbody');
+            tbody.innerHTML = '';
+
+            const filtered = sparepartsData.filter(item => {
+                const matchSearch = (item.id_part || '').toLowerCase().includes(query) ||
+                                    (item.name || '').toLowerCase().includes(query) ||
+                                    (item.storage || '').toLowerCase().includes(query);
+                const matchF1 = f1Val === '' || item.storage === f1Val;
+                return matchSearch && matchF1;
+            });
+
+            filtered.forEach(item => {
+                const isLow = item.stock <= item.min_stock;
+                const stockBadge = isLow ? `bg-red-100 text-red-700 font-bold px-3 py-1 rounded-md text-sm` : `font-bold text-gray-800 text-base`;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-5 font-mono text-gray-500">${item.id_part}</td>
+                    <td class="px-6 py-5 text-gray-700">${item.supplier_name || '-'}</td>
+                    <td class="px-6 py-5 font-semibold text-gray-800">${item.material_name || item.name || '-'}</td>
+                    <td class="px-6 py-5 text-gray-500 italic truncate max-w-[200px]" title="${item.item_short_text || item.spec}">${item.item_short_text || item.spec || '-'}</td>
+                    <td class="px-6 py-5 text-center"><span class="${stockBadge}">${item.stock}</span></td>
+                    <td class="px-6 py-5 text-gray-500">${item.purchase_unit || item.unit || '-'}</td>
+                    <td class="px-6 py-5 text-center font-semibold text-gray-400 text-base">${item.min_stock}</td>
+                    <td class="px-6 py-5 font-medium text-gray-700 flex items-center"><i class='bx bx-cabinet mr-2 text-gray-400 text-xl'></i>${item.storage || '-'}</td>
+                    <td class="px-6 py-5 font-medium text-green-600">${item.price_per_unit || '0.00'}</td>
+                    <td class="px-6 py-5 text-center flex justify-center gap-2">
+                        <button onclick="openHistoryModal('${item.id_part}')" class="text-green-600 hover:bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 transition-all text-base" title="History Pengambilan"><i class='bx bx-history'></i></button>
+                        <button onclick="openEditModal(${item.id})" class="text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 transition-all text-base" title="Edit Sparepart"><i class='bx bx-edit-alt'></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else if(currentTab === 'USER') {
+            const tbody = document.getElementById('user-tbody');
+            tbody.innerHTML = '';
+
+            const filtered = usersData.filter(item => {
+                const matchSearch = (item.name || '').toLowerCase().includes(query) ||
+                                    (item.userId || item.nik || '').toLowerCase().includes(query);
+                const matchF1 = f1Val === '' || item.role === f1Val;
+                const matchF2 = f2Val === '' || item.department === f2Val;
+                return matchSearch && matchF1 && matchF2;
+            });
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-5 font-mono font-medium text-gray-500">${item.userId || item.nik || '-'}</td>
+                    <td class="px-6 py-5 font-semibold text-gray-800 flex items-center">
+                        <img src="${item.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=f97316&color=fff&bold=true`}" class="w-6 h-6 rounded-full mr-2 object-cover">
+                        ${item.name}
+                    </td>
+                    <td class="px-6 py-5 text-gray-500">${item.email}</td>
+                    <td class="px-6 py-5 font-semibold text-orange-600">${item.role || 'User'}</td>
+                    <td class="px-6 py-5 font-mono text-gray-500 flex items-center">
+                        <span id="pw-${item.id}">***</span>
+                        <i class='bx bx-show ml-2 cursor-pointer text-gray-400 hover:text-gray-600 text-lg' onclick="togglePassword(${item.id}, '${item.password}')" id="pw-icon-${item.id}"></i>
+                    </td>
+                    <td class="px-6 py-5 text-gray-500">${item.department || '-'}</td>
+                    <td class="px-6 py-5 text-gray-500">${item.specialization || item.skills || '-'}</td>
+                    <td class="px-6 py-5 font-mono text-gray-500">${item.phone}</td>
+                    <td class="px-6 py-5 font-mono text-gray-500 text-sm">${item.tanggal_join ? String(item.tanggal_join).split('T')[0] : formatDateStr(item.created_at || item.createdAt || item.date_created).split(' ')[0]}</td>
+                    <td class="px-6 py-5 text-center">
+                        <button onclick="openEditModal(${item.id})" class="text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 transition-all text-base"><i class='bx bx-edit-alt'></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else if(currentTab === 'WORKORDER') {
+            // RENDER WORK ORDER
+            const tbody = document.getElementById('wo-tbody');
+            tbody.innerHTML = '';
+
+            const filtered = woData.filter(item => {
+                const matchSearch = (item.wo_id || item.id || '').toString().toLowerCase().includes(query) ||
+                                    (item.asset_id || '').toLowerCase().includes(query) ||
+                                    (item.issue_desc || '').toLowerCase().includes(query);
+                const matchF1 = f1Val === '' || (item.work_type || item.type) === f1Val;
+                const matchF2 = f2Val === '' || item.status === f2Val;
+                const matchF3 = f3Val === '' || item.priority === f3Val;
+                return matchSearch && matchF1 && matchF2 && matchF3;
+            });
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                const woId = item.wo_id || item.id;
+                let displayWoId = woId;
+                if (woId) {
+                    const idNum = String(woId).replace(/[^0-9]/g, '');
+                    const d = new Date(item.date_created || item.created_at || item.submission || item.start_time || item.createdAt || item.dateCreated || new Date());
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    displayWoId = `${yyyy}${mm}${dd}${String(idNum).padStart(6, '0')}`;
+                }
+                tr.innerHTML = `
+                    <td class="px-6 py-5 font-mono font-bold text-gray-700">${displayWoId || '-'}</td>
+                    <td class="px-6 py-5 font-mono text-gray-500">${item.asset_id || '-'}</td>
+                    <td class="px-6 py-5 text-gray-700 truncate max-w-[200px]" title="${item.issue_desc}">${item.issue_desc || '-'}</td>
+                    <td class="px-6 py-5 font-semibold ${item.priority === 'Critical' ? 'text-red-600' : 'text-gray-600'}">${item.priority || '-'}</td>
+                    <td class="px-6 py-5 font-bold text-gray-600">${item.work_type || item.type || '-'}</td>
+                    <td class="px-6 py-5 font-bold uppercase text-orange-600">${item.status || '-'}</td>
+                    <td class="px-6 py-5 text-gray-700">${item.tech_name || item.techName || item.technician || item.technician_name || '-'}</td>
+                    <td class="px-6 py-5 font-mono text-gray-500 text-sm">${formatDateStr(item.date_created || item.created_at || item.submission || item.start_time || item.createdAt || item.dateCreated)}</td>
+                    <td class="px-6 py-5 font-mono text-gray-500 text-sm">${formatDateStr(item.end_time || item.completion || item.endTime || item.completed_at || item.completedAt)}</td>
+                    <td class="px-6 py-5 text-center font-bold text-gray-800">${
+                        (() => {
+                            let dt = parseFloat(item.total_downtontime_minute ?? item.total_downtime_minute ?? item.downtime ?? item.total_downtime);
+                            if (isNaN(dt)) return '-';
+                            return Math.floor(dt) + 'm ' + Math.round((dt % 1) * 60) + 's';
+                        })()
+                    }</td>
+                    <td class="px-6 py-5 text-center">${getImagePath(item.image_path || item.img_sebelum || item.image_before || item.imageBefore)}</td>
+                    <td class="px-6 py-5 text-center">${getImagePath(item.image_after_path || item.img_sesudah || item.image_after || item.imageAfter)}</td>
+                    <td class="px-6 py-5 text-center">
+                        <button onclick="openEditModal(${woId})" class="text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 transition-all text-base"><i class='bx bx-edit-alt'></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    // Helper untuk merapikan datetime string untuk diisi ke <input type="datetime-local">
+    function formatForInput(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        return d.toISOString().slice(0,16); 
+    }
+
+    // Fungsi ini untuk membangun dan merender kolom input (Form HTML) di dalam modal secara dinamis menyesuaikan dengan kategori tab data yang sedang aktif 
+    function buildModalFields(dataObj = {}) {
+        const container = document.getElementById('modal-fields-container');
+        container.innerHTML = ''; 
+
+        if(currentTab === 'ASSET') {
+            let pDate = dataObj.purchase_date ? dataObj.purchase_date.split('T')[0] : '';
+            container.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Nomor Asset</label>
+                    <input type="text" id="f_nomorAsset" value="${dataObj.nomor_asset || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine ID</label>
+                    <input type="text" id="f_machineId" value="${dataObj.machine_id || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine Name</label>
+                <input type="text" id="f_machineName" value="${dataObj.machine_name || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Brand</label>
+                    <input type="text" id="f_brand" value="${dataObj.brand || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine Type</label>
+                    <input type="text" id="f_machineType" value="${dataObj.machine_type || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Area</label>
+                    <input type="text" id="f_area" value="${dataObj.area || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Location</label>
+                    <input type="text" id="f_location" value="${dataObj.location || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Department</label>
+                <input type="text" id="f_department" value="${dataObj.department || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Purchase Date</label>
+                <input type="date" id="f_purchaseDate" value="${pDate}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+            `;
+        } else if(currentTab === 'SPAREPART') {
+            container.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ID Part</label>
+                    <input type="text" id="f_idPart" value="${dataObj.id_part || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Supplier Name</label>
+                    <input type="text" id="f_supplierName" value="${dataObj.supplier_name || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material Name</label>
+                <input type="text" id="f_materialName" value="${dataObj.material_name || dataObj.name || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Item Short Text</label>
+                <textarea id="f_itemShortText" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none h-20">${dataObj.item_short_text || dataObj.spec || ''}</textarea></div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Stock</label>
+                    <input type="number" id="f_stock" value="${dataObj.stock ?? ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none font-bold"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Purchase Unit</label>
+                    <input type="text" id="f_purchaseUnit" value="${dataObj.purchase_unit || dataObj.unit || 'Pcs'}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Min. Stock</label>
+                    <input type="number" id="f_minStock" value="${dataObj.min_stock ?? '5'}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Storage Location</label>
+                    <input type="text" id="f_storage" value="${dataObj.storage || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Price per Unit</label>
+                    <input type="number" id="f_pricePerUnit" value="${dataObj.price_per_unit || ''}" step="0.01" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+            `;
+        } else if (currentTab === 'USER') {
+            container.innerHTML = `
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">User ID / NIK</label>
+                <input type="text" id="f_userId" value="${dataObj.userId || dataObj.nik || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Name</label>
+                <input type="text" id="f_name" value="${dataObj.name || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email</label>
+                <input type="email" id="f_email" value="${dataObj.email || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Role Akses</label>
+                <select id="f_role" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none">
+                    <option value="Admin Asset" ${dataObj.role === 'Admin Asset' ? 'selected' : ''}>Admin Asset</option>
+                    <option value="Admin Sparepart" ${dataObj.role === 'Admin Sparepart' ? 'selected' : ''}>Admin Sparepart</option>
+                    <option value="Admin Developer" ${dataObj.role === 'Admin Developer' ? 'selected' : ''}>Admin Developer</option>
+                    <option value="User" ${dataObj.role === 'User' ? 'selected' : (!dataObj.role ? 'selected' : '')}>User</option>
+                </select></div>
+
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Password</label>
+                <input type="password" id="f_password" value="${dataObj.password || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Department</label>
+                <select id="f_userDepartment" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none">
+                    <option value="Mechanic" ${dataObj.department === 'Mechanic' ? 'selected' : ''}>Mechanic</option>
+                    <option value="Production" ${dataObj.department === 'Production' ? 'selected' : ''}>Production</option>
+                    <option value="Warehouse" ${dataObj.department === 'Warehouse' ? 'selected' : ''}>Warehouse</option>
+                    <option value="Staff" ${dataObj.department === 'Staff' ? 'selected' : ''}>Staff</option>
+                </select></div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Specialization</label>
+                <input type="text" id="f_specialization" value="${dataObj.specialization || dataObj.skills || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Phone Number</label>
+                <input type="text" id="f_phone" value="${dataObj.phone || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tanggal Join</label>
+                <input type="date" id="f_tanggalJoin" value="${dataObj.tanggal_join || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                <div class="col-span-1"><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Profile Picture URL / Path</label>
+                <input type="text" id="f_profilePicture" value="${dataObj.profile_picture || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+            `;
+        } else if (currentTab === 'WORKORDER') {
+            container.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Asset ID</label>
+                    <input type="text" id="f_woAssetId" value="${dataObj.asset_id || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tech Name</label>
+                    <input type="text" id="f_woTechName" value="${dataObj.tech_name || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+                
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Issue Description</label>
+                <textarea id="f_woIssue" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none h-16">${dataObj.issue_desc || ''}</textarea></div>
+                
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Priority</label>
+                    <select id="f_woPriority" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none">
+                        <option value="-" ${dataObj.priority === '-' ? 'selected' : ''}>-</option>
+                        <option value="Low" ${dataObj.priority === 'Low' ? 'selected' : ''}>Low</option>
+                        <option value="Medium" ${dataObj.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                        <option value="High" ${dataObj.priority === 'High' ? 'selected' : ''}>High</option>
+                        <option value="Critical" ${dataObj.priority === 'Critical' ? 'selected' : ''}>Critical</option>
+                    </select></div>
+                    
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Work Type</label>
+                    <select id="f_woType" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none">
+                        <option value="PREVENTIVE" ${dataObj.work_type === 'PREVENTIVE' ? 'selected' : ''}>Preventive</option>
+                        <option value="CORRECTIVE" ${dataObj.work_type === 'CORRECTIVE' ? 'selected' : ''}>Corrective</option>
+                    </select></div>
+                    
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Status</label>
+                    <select id="f_woStatus" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none">
+                        <option value="OPEN" ${dataObj.status === 'OPEN' ? 'selected' : ''}>OPEN</option>
+                        <option value="IN PROGRESS" ${dataObj.status === 'IN PROGRESS' ? 'selected' : ''}>IN PROGRESS</option>
+                        <option value="COMPLETED" ${dataObj.status === 'COMPLETED' ? 'selected' : ''}>COMPLETED</option>
+                        <option value="CLOSED" ${dataObj.status === 'CLOSED' ? 'selected' : ''}>CLOSED</option>
+                    </select></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Submission (Date Created)</label>
+                    <input type="datetime-local" id="f_woDateCreated" value="${formatForInput(dataObj.date_created)}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Completion (End Time)</label>
+                    <input type="datetime-local" id="f_woEndTime" value="${formatForInput(dataObj.end_time)}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Start Time</label>
+                    <input type="datetime-local" id="f_woStartTime" value="${formatForInput(dataObj.start_time)}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Downtime (Menit)</label>
+                    <input type="number" id="f_woDowntime" value="${dataObj.total_downtontime_minute || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+
+                <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Delay Reason</label>
+                <input type="text" id="f_woDelay" value="${dataObj.delay_reason || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+
+                <div class="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Path Gambar Sebelum</label>
+                    <input type="text" id="f_woImgBefore" placeholder="Contoh: uploads/img1.png" value="${dataObj.image_path || dataObj.img_sebelum || dataObj.image_before || dataObj.imageBefore || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                    
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Path Gambar Sesudah</label>
+                    <input type="text" id="f_woImgAfter" placeholder="Contoh: uploads/img2.png" value="${dataObj.image_after_path || dataObj.img_sesudah || dataObj.image_after || dataObj.imageAfter || ''}" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"></div>
+                </div>
+            `;
+        }
+    }
+
+    // Fungsi ini untuk membuka pop up modal tambah data baru secara manual (mereset field form dan menyembunyikan tombol hapus)
+    function openAddModal() {
+        currentEditId = null;
+        let titleName = currentTab === 'WORKORDER' ? 'Work Order' : currentTab.toLowerCase();
+        document.getElementById('modalTitle').innerText = `Tambah ${titleName} (Manual)`;
+        document.getElementById('modalDeleteBtn').classList.add('hidden');
+        buildModalFields();
+        toggleModalUI(true);
+    }
+
+    // Fungsi ini untuk memfilter logs data dan menampilkan pop up modal berupa tabel riwayat pengambilan khusus untuk sparepart tertentu 
+    function openHistoryModal(id_part) {
+        const tbody = document.getElementById('history-table-body');
+        tbody.innerHTML = '';
+        
+        const filteredLogs = logsData.filter(log => log.id_part === id_part);
+        
+        if (filteredLogs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-500">Belum ada history pengambilan untuk sparepart ini.</td></tr>`;
+        } else {
+            filteredLogs.forEach(log => {
+                const isRestock = log.action === 'RESTOCK' || log.qty < 0;
+                const sign = isRestock ? '+' : '-';
+                const displayQty = Math.abs(log.qty);
+                const textColor = isRestock ? 'text-emerald-500' : 'text-red-500';
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-gray-600 font-medium">${formatDateStr(log.created_at)}</td>
+                    <td class="px-4 py-3 font-semibold text-gray-800">${log.technician}</td>
+                    <td class="px-4 py-3 text-center ${textColor} font-bold">${sign}${displayQty}</td>
+                    <td class="px-4 py-3 text-gray-500 font-mono">${log.work_order || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        const modal = document.getElementById('historyModal');
+        const box = document.getElementById('history-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    // Fungsi ini untuk menutup jendela pop up modal riwayat 
+    function closeHistoryModal() {
+        const modal = document.getElementById('historyModal');
+        const box = document.getElementById('history-modal-box');
+        box.classList.remove('scale-100');
+        box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    // Fungsi ini untuk membuka pop-up modal dalam mode edit, mengambil data spesifik berdasarkan ID, dan mengisi form input dengan data tersebut
+    function openEditModal(id) {
+        currentEditId = id;
+        let titleName = currentTab === 'WORKORDER' ? 'Work Order' : currentTab.toLowerCase();
+        document.getElementById('modalTitle').innerText = `Edit ${titleName}`;
+        document.getElementById('modalDeleteBtn').classList.remove('hidden');
+        
+        let dataArr;
+        if(currentTab === 'ASSET') dataArr = assetsData;
+        else if(currentTab === 'SPAREPART') dataArr = sparepartsData;
+        else if(currentTab === 'USER') dataArr = usersData;
+        else dataArr = woData;
+
+        let itemData;
+        if (currentTab === 'ASSET') itemData = dataArr.find(d => d.machine_id === id);
+        else if (currentTab === 'WORKORDER') itemData = dataArr.find(d => (d.wo_id || d.id) === id);
+        else itemData = dataArr.find(d => d.id === id);
+
+        buildModalFields(itemData);
+        toggleModalUI(true);
+    }
+
+    // Fungsi ini sebagai pemantik untuk memanggil penutupan antarmuka pop-up modal utama (form edit atau tambah)
+    function closeModal() { toggleModalUI(false); }
+
+    // Fungsi ini untuk memanipulasi visibilatas CSS dari antarmuka pop up modal utama untuk menampilkannya (true ) atau menyembunyikannya 
+    function toggleModalUI(show) {
+        const modal = document.getElementById('masterModal');
+        const modalBox = document.getElementById('modal-box');
+        if(show) {
+            modal.classList.remove('hidden');
+            setTimeout(() => { modalBox.classList.replace('scale-95', 'scale-100'); }, 10);
+        } else {
+            modalBox.classList.replace('scale-100', 'scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        }
+    }
+
+    // Fungsi ini untuk merakit objek payload dari form input yang diisi pengguna lalu mengirimkannya ke endpoint POST server API 
+    async function executeSave() {
+        if(currentTab === 'ASSET') {
+            let mName = document.getElementById('f_machineName').value;
+            if(!mName) { Swal.fire('Perhatian', 'Machine Name tidak boleh kosong!', 'warning'); return; }
+
+            const payload = {
+                id: currentEditId,
+                nomor_asset: document.getElementById('f_nomorAsset').value,
+                machine_id: document.getElementById('f_machineId').value,
+                machine_name: mName,
+                brand: document.getElementById('f_brand').value,
+                machine_type: document.getElementById('f_machineType').value,
+                area: document.getElementById('f_area').value,
+                location: document.getElementById('f_location').value,
+                department: document.getElementById('f_department').value,
+                purchase_date: document.getElementById('f_purchaseDate').value || null
+            };
+
+            try {
+                const res = await fetch('/api/assets', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    await fetchMasterData(); closeModal(); Swal.fire('Tersimpan!', 'Data Asset berhasil disimpan.', 'success');
+                } else { 
+                    const err = await res.json();
+                    Swal.fire('Gagal', err.error || 'Gagal simpan ke DB.', 'error'); 
+                }
+            } catch (e) { Swal.fire('Error', 'Gagal koneksi ke server backend.', 'error'); }
+
+        } else if(currentTab === 'SPAREPART') {
+            let materialNameVal = document.getElementById('f_materialName').value;
+            if(!materialNameVal) { Swal.fire('Perhatian', 'Material Name tidak boleh kosong!', 'warning'); return; }
+            
+            const payload = {
+                id: currentEditId,
+                id_part: document.getElementById('f_idPart').value,
+                supplier_name: document.getElementById('f_supplierName').value,
+                material_name: materialNameVal,
+                name: materialNameVal, // Menyimpan ke kolom lama juga
+                item_short_text: document.getElementById('f_itemShortText').value,
+                spec: document.getElementById('f_itemShortText').value, // Menyimpan ke kolom lama juga
+                stock: parseInt(document.getElementById('f_stock').value) || 0,
+                purchase_unit: document.getElementById('f_purchaseUnit').value,
+                unit: document.getElementById('f_purchaseUnit').value, // Menyimpan ke kolom lama juga
+                min_stock: parseInt(document.getElementById('f_minStock').value) || 0,
+                storage: document.getElementById('f_storage').value,
+                price_per_unit: parseFloat(document.getElementById('f_pricePerUnit').value) || 0
+            };
+
+            try {
+                const res = await fetch('/api/spareparts', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    await fetchMasterData(); closeModal(); Swal.fire('Tersimpan!', 'Data Sparepart berhasil disimpan.', 'success');
+                } else { 
+                    const err = await res.json();
+                    Swal.fire('Gagal', err.error || 'Gagal simpan ke DB.', 'error'); 
+                }
+            } catch (e) { Swal.fire('Error', 'Gagal koneksi ke server backend.', 'error'); }
+
+        } else if(currentTab === 'USER') {
+            let nameVal = document.getElementById('f_name').value;
+            if(!nameVal) { Swal.fire('Perhatian', 'Nama tidak boleh kosong!', 'warning'); return; }
+            const payload = {
+                id: currentEditId, 
+                userId: document.getElementById('f_userId').value,
+                nik: document.getElementById('f_userId').value,
+                name: nameVal, 
+                email: document.getElementById('f_email').value,
+                password: document.getElementById('f_password').value, 
+                department: document.getElementById('f_userDepartment').value,
+                specialization: document.getElementById('f_specialization').value,
+                skills: document.getElementById('f_specialization').value,
+                phone: document.getElementById('f_phone').value,
+                tanggal_join: document.getElementById('f_tanggalJoin').value,
+                role: document.getElementById('f_role').value,
+                profile_picture: document.getElementById('f_profilePicture').value
+            };
+            
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    await fetchMasterData(); closeModal(); Swal.fire('Tersimpan!', 'Data User berhasil disimpan.', 'success');
+                } else { 
+                    const err = await res.json();
+                    Swal.fire('Gagal', err.error || 'Gagal simpan ke DB.', 'error'); 
+                }
+            } catch (e) { Swal.fire('Error', 'Gagal koneksi ke server backend.', 'error'); }
+        } else if (currentTab === 'WORKORDER') {
+            const payload = {
+                wo_id: currentEditId, 
+                asset_id: document.getElementById('f_woAssetId').value,
+                tech_name: document.getElementById('f_woTechName').value,
+                issue_desc: document.getElementById('f_woIssue').value,
+                priority: document.getElementById('f_woPriority').value,
+                work_type: document.getElementById('f_woType').value,
+                status: document.getElementById('f_woStatus').value,
+                date_created: document.getElementById('f_woDateCreated').value || null,
+                end_time: document.getElementById('f_woEndTime').value || null,
+                start_time: document.getElementById('f_woStartTime').value || null,
+                total_downtontime_minute: parseInt(document.getElementById('f_woDowntime').value) || null,
+                delay_reason: document.getElementById('f_woDelay').value,
+                image_path: document.getElementById('f_woImgBefore').value,
+                image_after_path: document.getElementById('f_woImgAfter').value,
+            };
+
+            // Karena endpoint WO mungkin belum di setup secara sempurna untuk ADD via DatabaseMaster
+            // Asumsi Endpoint POST /api/workorders (sama seperti table lainnya jika menggunakan UPSERT)
+            try {
+                let url = '/api/workorders';
+                let method = 'POST';
+                
+                // Jika ingin spesifik PUT jika edit, sesuaikan dengan backend anda. 
+                // Disini saya pakai logika POST umum jika API mendukung UPSERT.
+                const res = await fetch(url, {
+                    method: method, 
+                    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    await fetchMasterData(); closeModal(); Swal.fire('Tersimpan!', 'Data Work Order berhasil disimpan.', 'success');
+                } else { 
+                    const err = await res.json();
+                    Swal.fire('Gagal', err.error || 'Gagal simpan ke DB.', 'error'); 
+                }
+            } catch (e) { Swal.fire('Error', 'Gagal koneksi ke server backend.', 'error'); }
+        }
+    }
+
+    // Fungsi ini untuk meminta konfirmasi pengguna dan mengirimkan perintah 
+    function executeDelete() {
+        if(currentEditId === null) return;
+        Swal.fire({
+            title: 'Hapus Data?', text: "Data akan dihapus permanen!", icon: 'warning',
+            showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#9ca3af', confirmButtonText: 'Ya, Hapus!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    let response;
+                    if(currentTab === 'ASSET') { response = await fetch(`/api/assets/${currentEditId}`, { method: 'DELETE' }); } 
+                    else if (currentTab === 'SPAREPART') { response = await fetch(`/api/spareparts/${currentEditId}`, { method: 'DELETE' }); } 
+                    else if (currentTab === 'USER') { response = await fetch(`/api/users/${currentEditId}`, { method: 'DELETE' }); } 
+                    else if (currentTab === 'WORKORDER') { response = await fetch(`/api/workorders/${currentEditId}`, { method: 'DELETE' }); } 
+
+                    if (response && response.ok) {
+                        await fetchMasterData();
+                        closeModal(); 
+                        Swal.fire('Dihapus!', 'Data telah dihapus.', 'success');
+                    } else {
+                        // Menangkap pesan error spesifik dari Backend / Server
+                        let errorMsg = 'Terjadi kesalahan saat menghapus data di database.';
+                        try {
+                            const errData = await response.json();
+                            errorMsg = errData.error || errData.message || errorMsg;
+                        } catch (parseErr) {
+                            errorMsg = `Server merespons dengan status ${response.status}`;
+                        }
+                        Swal.fire('Gagal', errorMsg, 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Gagal menghubungi server.', 'error');
+                }
+            }
+        });
+    }
+
+    // Fungsi helper ini untuk mengnversi berbagai jenis format tanggal bawaan excel menjadi string tanggal baku berbasis ISO 
+    function convertExcelDate(excelValue) {
+        if (!excelValue) return null;
+        if (typeof excelValue === 'string' && excelValue.includes('-') && excelValue.length === 10) return excelValue; 
+        if (typeof excelValue === 'string' && excelValue.includes('/')) {
+            const parts = excelValue.split(' ')[0].split('/'); 
+            if(parts.length === 3) {
+                let day = parts[0].padStart(2, '0');
+                let month = parts[1].padStart(2, '0');
+                let year = parts[2];
+                if (year.length === 2) year = "20" + year; 
+                return `${year}-${month}-${day}`;
+            }
+        }
+        const serial = parseFloat(excelValue);
+        if (!isNaN(serial)) {
+            const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
+            return date.toISOString().split('T')[0];
+        }
+        return null;
+    }
+
+    // Fungsi ini untuk membaca file xlsx csv yang diunggah memparsing struktur array/JSON nya dan melakukan request bulk POST ke database server
+    async function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        Swal.fire({
+            title: 'Memproses Excel...', html: 'Harap tunggu, menyimpan ke PostgreSQL.',
+            allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }
+        });
+
+        setTimeout(() => {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    
+                    const json = XLSX.utils.sheet_to_json(worksheet, {header: 1, raw: false, dateNF: 'yyyy-mm-dd'}); 
+                    const rows = json.filter(row => row.length > 0);
+                    
+                    if (rows.length <= 1) {
+                        Swal.fire('File Kosong', 'Tidak ada data valid di Excel.', 'error'); return;
+                    }
+
+                    let successCount = 0;
+                    if (currentTab === 'ASSET') {
+                        for (let i = 1; i < rows.length; i++) {
+                            const cols = rows[i];
+                            
+                            let rawMachineId = cols[1] ? cols[1].toString().trim() : '';
+                            // Jika Serial Number kosong atau '-', gunakan Nomor Asset sebagai ID agar tidak tertimpa
+                            let finalMachineId = (rawMachineId === '' || rawMachineId === '-') ? cols[0] : rawMachineId;
+
+                            // Lewati jika ini adalah baris kosong (ghost row) di akhir excel
+                            if (!cols[0] && !finalMachineId && !cols[2]) continue;
+
+                            const payload = {
+                                nomor_asset: cols[0] || '', 
+                                machine_id: finalMachineId || `ASSET-${Date.now()}-${i}`, 
+                                machine_name: cols[2] || '', 
+                                brand: cols[3] || '',
+                                machine_type: cols[4] || '', 
+                                area: cols[5] || '', 
+                                location: cols[6] || '', 
+                                department: cols[7] || '', 
+                                purchase_date: convertExcelDate(cols[8])
+                            };
+                            
+                            try {
+                                const res = await fetch('/api/assets', { 
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) 
+                                });
+                                if(res.ok) successCount++;
+                            } catch (err) {
+                                console.error("Gagal menyimpan baris " + i, err);
+                            }
+                        }
+                        await fetchMasterData();
+                        Swal.fire('Berhasil!', `Mengimpor ${successCount} data Asset ke PostgreSQL.`, 'success');
+
+                    } else if (currentTab === 'SPAREPART') {
+                         for (let i = 1; i < rows.length; i++) {
+                            const cols = rows[i];
+                            
+                            // Lewati jika ini adalah baris kosong (ghost row) di akhir excel
+                            if (!cols[0] && !cols[1] && !cols[2]) continue;
+
+                            const payload = {
+                                id_part: cols[0] || '', 
+                                supplier_name: cols[1] || '',
+                                material_name: cols[2] || '',
+                                name: cols[2] || '', 
+                                item_short_text: cols[3] || '',
+                                spec: cols[3] || '', 
+                                stock: parseInt(cols[4]) || 0, 
+                                purchase_unit: cols[5] || 'Pcs',
+                                unit: cols[5] || 'Pcs', 
+                                min_stock: parseInt(cols[6]) || 0, 
+                                storage: cols[7] || '',
+                                price_per_unit: parseFloat(cols[8]) || 0
+                            };
+                            
+                            try {
+                                const res = await fetch('/api/spareparts', {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) 
+                                });
+                                if(res.ok) successCount++;
+                            } catch (err) {
+                                console.error("Gagal menyimpan baris " + i, err);
+                            }
+                        }
+                        await fetchMasterData();
+                        Swal.fire('Berhasil!', `Mengimpor ${successCount} data Sparepart ke PostgreSQL.`, 'success');
+                    } else {
+                        Swal.fire('Info', `Fungsi impor Excel hanya untuk Asset dan Sparepart saat ini.`, 'info');
+                    }
+                } catch (error) {
+                    Swal.fire('Gagal', 'Terjadi kesalahan membaca file Excel.', 'error');
+                } finally {
+                    event.target.value = ""; 
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }, 500);
+    }
+
+    // Fungsi ini untuk menampilkan atau menyembunyikan child dari submenu pada komponen navigasi sidebar 
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) sidebar.classList.remove('sidebar-collapsed');
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) { submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)';
+      } else { submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; }
+    }
+
+    // Mengubah mode tampilan sidebar melebar atau menyusut untuk memaksimalkan ruang layar
+</script>
+<script src="gtranslate.js"></script>
+<script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

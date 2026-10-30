@@ -1,0 +1,413 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Submit Corrective - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #reader video { object-fit: cover; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden">
+
+  <div class="flex-1 flex flex-col h-screen min-w-0">
+    <main class="flex-1 overflow-y-auto p-8 bg-gray-100 flex items-start justify-center">
+      <div class="bg-white p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-2xl mt-4 relative overflow-hidden">
+        
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-red-500"></div>
+
+        <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-red-100 text-red-500 p-2.5 rounded-lg">
+                    <i class='bx bx-error-circle text-3xl'></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Corrective Submission Form</h2>
+                    <p class="text-sm text-gray-500">Damage Reporting Form / Corrective Maintenance</p>
+                </div>
+            </div>
+            <a href="Corrective.html" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                <i class='bx bx-x text-3xl'></i>
+            </a>
+        </div>
+
+        <form onsubmit="event.preventDefault(); handleFormSubmit(event); return false;">
+          
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Name <span class="text-red-400 font-normal text-xs">(isi nama Anda)</span></label>
+            <input type="text" id="user_name" placeholder="Masukkan nama Anda..." required
+                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white">
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Scanner QR Code (Asset ID / Machine ID)</label>
+            <div id="reader" class="w-full bg-gray-900 rounded-xl overflow-hidden border-2 border-red-500 mb-3 min-h-[200px] flex items-center justify-center"></div>
+            <div class="flex gap-2">
+                <button type="button" onclick="startScanner()" class="bg-red-500 text-white text-xs px-4 py-1.5 rounded hover:bg-red-600 transition-colors shadow-md"><i class='bx bx-video mr-1'></i> Start Scanner</button>
+                <button type="button" onclick="stopScanner()" class="bg-gray-500 text-white text-xs px-4 py-1.5 rounded hover:bg-gray-600 transition-colors shadow-md"><i class='bx bx-video-off mr-1'></i> Stop</button>
+            </div>
+          </div>
+
+          <div class="mb-5 grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Asset ID</label>
+                <input type="text" id="asset_id" placeholder="Scan or type Asset ID..." required oninput="checkAssetId()"
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white font-mono font-bold">
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Name ID</label>
+                <input type="text" id="name_id" placeholder="Auto-filled Name..." readonly 
+                       class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-gray-600 bg-gray-200 cursor-not-allowed font-medium">
+              </div>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Priority (Urgency Level)</label>
+            <select id="priority" required
+                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white cursor-pointer appearance-none">
+              <option value="" disabled selected>-- Select Priority Level --</option>
+              <option value="Low">Low (Can be delayed, does not disrupt production)</option>
+              <option value="Medium">Medium (Needs immediate check, potential issue)</option>
+              <option value="High">High (Disrupts production efficiency)</option>
+              <option value="Critical">Critical (Machine completely down / Line Stop!)</option>
+            </select>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Issue Description</label>
+            <textarea id="issue_desc" rows="4" placeholder="Describe the details of the damage that occurred to the machine..." required
+                      class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white"></textarea>
+          </div>
+
+          <div class="mb-8">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Upload Photo / Evidence Issue</label>
+            <div class="flex items-center justify-center w-full relative">
+                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 hover:border-red-500 transition-colors overflow-hidden relative">
+                    <div id="submit-upload-placeholder" class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <i class='bx bx-cloud-upload text-4xl text-gray-400 mb-2'></i>
+                        <p class="mb-1 text-sm text-gray-500"><span class="font-bold text-gray-700">Click to upload photo evidence</span></p>
+                        <p class="text-xs text-gray-400">PNG, JPG or JPEG</p>
+                    </div>
+                    <img id="submit-image-preview" class="hidden absolute inset-0 w-full h-full object-cover" />
+                    <input id="submit-evidence-upload" type="file" class="hidden" accept="image/*" onchange="previewSubmitImage(event)" />
+                </label>
+            </div>
+            <button type="button" id="submit-remove-image-btn" class="hidden mt-2 text-sm text-red-500 hover:text-red-700 font-bold flex items-center" onclick="removeSubmitImage()">
+                <i class='bx bx-trash mr-1'></i> Remove Image
+            </button>
+          </div>
+
+          <button type="submit" 
+                  class="w-full bg-red-500 hover:bg-red-600 text-white font-bold text-lg py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center">
+            <i class='bx bx-send mr-2'></i> Submit Issue Report
+          </button>
+        </form>
+
+      </div>
+    </main>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const API_URL = '';
+    let masterAssets = [];
+    let technicianNames = [];
+    let html5QrCode;
+    let isProcessingQR = false; 
+
+    function renderTechnicianOptions(query = '') {
+        const options = document.getElementById('user_name_options');
+        const normalizedQuery = query.trim().toLowerCase();
+        const matches = technicianNames.filter(name => name.toLowerCase().includes(normalizedQuery));
+        options.replaceChildren();
+
+        matches.forEach(name => {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:outline-none';
+            option.textContent = name;
+            option.addEventListener('click', () => {
+                document.getElementById('user_name').value = name;
+                const selected = document.getElementById('user_name_selected');
+                selected.textContent = name;
+                selected.classList.remove('text-gray-500');
+                closeTechnicianDropdown();
+            });
+            options.appendChild(option);
+        });
+
+        document.getElementById('user_name_no_results').classList.toggle('hidden', matches.length > 0);
+    }
+
+    function closeTechnicianDropdown() {
+        document.getElementById('user_name_menu').classList.add('hidden');
+        document.getElementById('user_name_toggle').setAttribute('aria-expanded', 'false');
+    }
+
+    // Fetch Assets Data
+    async function fetchAssets() {
+        try {
+            const res = await fetch(`${API_URL}/api/assets`);
+            if(res.ok) {
+                masterAssets = await res.json();
+                localStorage.setItem('cmms_assets', JSON.stringify(masterAssets));
+            } else {
+                throw new Error("Backend Offline");
+            }
+        } catch (err) {
+            console.warn("Menggunakan data localStorage karena backend gagal dijangkau...");
+            masterAssets = JSON.parse(localStorage.getItem('cmms_assets')) || [];
+        }
+    }
+
+    // Auto-fill Name ID based on Asset ID
+    function checkAssetId() {
+        const assetInput = document.getElementById('asset_id').value.trim().toLowerCase();
+        const nameInput = document.getElementById('name_id');
+
+        if (!assetInput) {
+            nameInput.value = "";
+            return;
+        }
+
+        // PERBAIKAN PENCARIAN (Mencari Nomor Asset ATAU Machine ID)
+        const asset = masterAssets.find(a => {
+            let dbNomor = a.nomor_asset ? String(a.nomor_asset).trim().toLowerCase() : "";
+            let dbMachineId = a.machine_id ? String(a.machine_id).trim().toLowerCase() : "";
+            return dbNomor === assetInput || dbMachineId === assetInput;
+        });
+        
+        if (asset) {
+            // Seragamkan inputan menjadi Nomor Asset Utama agar data yang tersimpan seragam
+            document.getElementById('asset_id').value = asset.nomor_asset || assetInput;
+
+            let mName = asset.machine_name || "";
+            if (!mName || mName.trim() === "" || mName.trim() === "-") {
+                nameInput.value = "Mesin Ditemukan (Tanpa Nama)";
+            } else {
+                nameInput.value = mName;
+            }
+        } else {
+            nameInput.value = "Asset Not Found";
+        }
+    }
+
+    let evidenceBase64 = "";
+
+    function previewSubmitImage(event) {
+        const input = event.target;
+        const preview = document.getElementById('submit-image-preview');
+        const placeholder = document.getElementById('submit-upload-placeholder');
+        const removeBtn = document.getElementById('submit-remove-image-btn');
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                evidenceBase64 = e.target.result; 
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                removeBtn.classList.remove('hidden');
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function removeSubmitImage() {
+        document.getElementById('submit-evidence-upload').value = "";
+        const preview = document.getElementById('submit-image-preview');
+        preview.src = "";
+        evidenceBase64 = "";
+        preview.classList.add('hidden');
+        document.getElementById('submit-upload-placeholder').classList.remove('hidden');
+        document.getElementById('submit-remove-image-btn').classList.add('hidden');
+    }
+
+    // QR Scanner Functions
+    function startScanner() {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        
+        if (html5QrCode.isScanning) return; 
+        isProcessingQR = false; 
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                if (isProcessingQR) return; 
+                isProcessingQR = true; 
+
+                document.getElementById('asset_id').value = decodedText;
+                checkAssetId();
+                stopScanner();
+                Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'QR Code Terbaca!' });
+            },
+            (errorMessage) => {}
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                isProcessingQR = false; 
+            }).catch(err => console.error("Stop failed", err));
+        }
+    }
+
+    function getWibDateTimeString(date = new Date()) {
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+
+        const values = {};
+        formatter.formatToParts(date).forEach(part => {
+            if (part.type !== 'literal') {
+                values[part.type] = part.value;
+            }
+        });
+
+        return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await fetchAssets();
+
+      // Check URL parameters for scanned asset
+      const urlParams = new URLSearchParams(window.location.search);
+      const scannedAssetId = urlParams.get('asset_id');
+      if(scannedAssetId) {
+          const assetInput = document.getElementById('asset_id');
+          assetInput.value = scannedAssetId;
+          checkAssetId();
+      } else {
+          startScanner(); 
+      }
+    });
+
+    // Form Submit Handler
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+
+        const userName = document.getElementById('user_name').value.trim();
+        if (!userName) {
+            Swal.fire({ icon: 'warning', title: 'Name wajib diisi', text: 'Harap masukkan nama Anda sebelum submit.', confirmButtonColor: '#ef4444' });
+            return;
+        }
+        
+        if(evidenceBase64) {
+            localStorage.setItem('issue_evidence_corrective', evidenceBase64);
+        }
+
+        const nameInput = document.getElementById('name_id').value;
+        if(nameInput === "Asset Not Found") {
+            Swal.fire({ icon: 'warning', title: 'Data Tidak Valid', text: 'Nomor Asset tidak ditemukan di Database Master. Harap periksa kembali.', confirmButtonColor: '#ef4444' });
+            return;
+        }
+
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin mr-2'></i> Processing...";
+        btn.classList.add('opacity-80', 'cursor-not-allowed');
+        btn.disabled = true;
+
+        const formData = new FormData();
+        const datetime = getWibDateTimeString();
+        formData.append('user_name', userName);
+        formData.append('asset_id', document.getElementById('asset_id').value);
+        formData.append('priority', document.getElementById('priority').value);
+        formData.append('issue_desc', document.getElementById('issue_desc').value);
+        formData.append('datetime', datetime);
+        
+        // Downtime untuk Corrective mulai dihitung TEPAT saat form ini disubmit
+        formData.append('downtime_start', new Date().toISOString());
+
+        const fileInput = document.getElementById('submit-evidence-upload');
+        if (fileInput.files && fileInput.files[0]) { 
+            const cloudForm = new FormData();
+            cloudForm.append('file', fileInput.files[0]);
+            cloudForm.append('api_key', '432919999388821');
+            cloudForm.append('upload_preset', 'cmmscsb'); // Harap isi dengan Preset Cloudinary Anda
+            cloudForm.append('api_secret', '789291439535634'); // Un-comment jika konfigurasi request API Anda mewajibkan Secret
+
+            const cloudRes = await fetch('https://api.cloudinary.com/v1_1/bfvxjarw/image/upload', {
+                method: 'POST',
+                body: cloudForm
+            });
+            const cloudData = await cloudRes.json();
+
+            formData.append('image', cloudData.secure_url); 
+            localStorage.setItem('issue_evidence_corrective', cloudData.secure_url);
+        }
+
+        try {
+            const res = await fetch(`${API_URL}/api/corrective`, { 
+                method: 'POST', 
+                body: formData 
+            });
+            
+            if(res.ok) {
+                const assetIdVal = document.getElementById('asset_id').value;
+                const assetData = masterAssets.find(a => (a.nomor_asset && String(a.nomor_asset).trim().toLowerCase() === assetIdVal.toLowerCase()) || (a.machine_id && String(a.machine_id).trim().toLowerCase() === assetIdVal.toLowerCase()));
+                const area = assetData && assetData.area ? assetData.area : '-';
+                const lokasi = assetData && assetData.location ? assetData.location : '-';
+                
+                const reportHtml = `
+                    <div class="text-center mb-6">
+                        <i class='bx bx-check-circle text-6xl text-red-500 mb-3'></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Submit Berhasil!</h2>
+                        <p class="text-gray-500">Laporan kerusakan telah direkam dan siap ditindaklanjuti.</p>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 text-left space-y-3 text-sm">
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Work Order</span><span class="col-span-2 font-bold text-gray-800">: (Dibuat Otomatis oleh Sistem)</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Waktu Pengajuan</span><span class="col-span-2 font-bold text-gray-800">: ${datetime}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Nama Mesin</span><span class="col-span-2 font-bold text-gray-800">: ${document.getElementById('name_id').value}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Nomor Asset</span><span class="col-span-2 font-bold text-gray-800">: ${assetIdVal}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Area / Lokasi</span><span class="col-span-2 font-bold text-gray-800">: ${area} / ${lokasi}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Maintenance</span><span class="col-span-2 font-bold text-red-600">: Corrective</span></div>
+                        <div class="grid grid-cols-3 pb-2"><span class="text-gray-500 font-medium">Priority</span><span class="col-span-2 font-bold text-red-500">: ${document.getElementById('priority').value}</span></div>
+                    </div>
+                    <button onclick="window.location.reload()" class="mt-6 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md">
+                        Selesai & Lapor Lagi
+                    </button>
+                `;
+                btn.closest('form').parentElement.innerHTML = reportHtml;
+            } else {
+                const errData = await res.json();
+                Swal.fire({ icon: 'error', title: 'Error DB', text: errData.error || "Gagal menyimpan.", confirmButtonColor: '#ef4444' });
+                resetBtn(btn);
+            }
+        } catch(err) {
+            Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Pastikan backend server.js berjalan.', confirmButtonColor: '#ef4444' });
+            resetBtn(btn);
+        }
+    }
+    
+    function resetBtn(btn) {
+        btn.innerHTML = "<i class='bx bx-send mr-2'></i> Submit Issue Report";
+        btn.classList.remove('opacity-80', 'cursor-not-allowed');
+        btn.disabled = false;
+    }
+</script>
+
+</body>
+</html>

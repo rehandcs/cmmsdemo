@@ -1,0 +1,917 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pick Up & Return Sparepart - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+    .reader-container video { object-fit: cover; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+    <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 bg-gray-50 flex flex-col items-center w-full">
+      
+      <!-- TAB NAVIGATION (Konsep TicketWO) -->
+      <div class="w-full max-w-3xl flex space-x-6 mt-4 justify-center border-b border-gray-200 shrink-0">
+          <button onclick="switchTab('PICKUP')" id="tab-btn-pickup" class="pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors">Pick Up Sparepart</button>
+          <button onclick="switchTab('RETURN')" id="tab-btn-return" class="pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors">Sparepart Return</button>
+      </div>
+
+      <!-- VIEW: PICK UP SPAREPART -->
+      <div id="view-pickup" class="block w-full max-w-2xl mt-8">
+        <div class="bg-white p-5 md:p-8 rounded-2xl shadow-lg border border-gray-200 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1.5 bg-indigo-500"></div>
+
+          <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-4 mt-2">
+              <div class="flex items-center gap-3">
+                  <div class="bg-indigo-100 text-indigo-500 p-2.5 rounded-lg">
+                      <i class='bx bx-qr-scan text-3xl'></i>
+                  </div>
+                  <div>
+                      <h2 class="text-2xl font-bold text-gray-800">Scan Sparepart</h2>
+                      <p class="text-sm text-gray-500">Scan Barcode / ID Part to Pick Up Sparepart</p>
+                  </div>
+              </div>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Scanner Barcode (ID Part)</label>
+            <div id="reader-pickup" class="reader-container w-full bg-gray-900 rounded-xl overflow-hidden border-2 border-indigo-500 mb-3 min-h-[200px] flex items-center justify-center"></div>
+            <div class="flex justify-center gap-2 md:gap-3 mb-4">
+                <button type="button" onclick="startScanner('pickup')" class="bg-indigo-500 text-white text-sm px-4 md:px-6 py-2 rounded-lg hover:bg-indigo-600 transition-colors shadow-md font-bold flex items-center">
+                    <i class='bx bx-video mr-1 md:mr-2 text-base md:text-lg'></i> Start Scanner
+                </button>
+                <button type="button" onclick="stopScanner('pickup')" class="bg-gray-500 text-white text-sm px-4 md:px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors shadow-md font-bold flex items-center">
+                    <i class='bx bx-video-off mr-1 md:mr-2 text-base md:text-lg'></i> Stop
+                </button>
+            </div>
+          </div>
+
+          <div class="relative flex py-5 items-center">
+              <div class="flex-grow border-t border-gray-300"></div>
+              <span class="flex-shrink-0 mx-4 text-gray-400 text-sm font-bold">OR MANUAL INPUT</span>
+              <div class="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          <div>
+              <label class="block text-sm font-bold text-gray-700 mb-2">Add ID Part</label>
+              <div class="flex gap-2">
+                  <input type="text" id="manual_part_id_pickup" placeholder="Type ID Part..." 
+                         class="w-full flex-1 border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-sm font-bold font-mono bg-gray-50 focus:bg-white">
+                  <button type="button" onclick="handleManualSearch('pickup')" class="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold px-4 md:px-6 py-3 rounded-lg transition-all shadow-md flex items-center justify-center shrink-0">
+                      <i class='bx bx-search mr-1'></i> Search
+                  </button>
+              </div>
+          </div>
+        </div>
+      </div>
+      
+
+      <!-- VIEW: RETURN SPAREPART -->
+      <div id="view-return" class="hidden w-full max-w-2xl mt-8">
+        <div class="bg-white p-8 rounded-2xl shadow-lg border border-gray-200 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1.5 bg-pink-500"></div>
+
+          <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-4 mt-2">
+              <div class="flex items-center gap-3">
+                  <div class="bg-pink-100 text-pink-500 p-2.5 rounded-lg">
+                      <i class='bx bx-qr-scan text-3xl'></i>
+                  </div>
+                  <div>
+                      <h2 class="text-2xl font-bold text-gray-800">Return Sparepart</h2>
+                      <p class="text-sm text-gray-500">Scan Barcode / ID Part to Return Sparepart</p>
+                  </div>
+              </div>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Scanner Barcode (ID Part)</label>
+            <div id="reader-return" class="reader-container w-full bg-gray-900 rounded-xl overflow-hidden border-2 border-pink-500 mb-3 min-h-[200px] flex items-center justify-center"></div>
+            <div class="flex justify-center gap-2 md:gap-3 mb-4">
+                <button type="button" onclick="startScanner('return')" class="bg-pink-500 text-white text-sm px-4 md:px-6 py-2 rounded-lg hover:bg-pink-600 transition-colors shadow-md font-bold flex items-center">
+                    <i class='bx bx-video mr-1 md:mr-2 text-base md:text-lg'></i> Start Scanner
+                </button>
+                <button type="button" onclick="stopScanner('return')" class="bg-gray-500 text-white text-sm px-4 md:px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors shadow-md font-bold flex items-center">
+                    <i class='bx bx-video-off mr-1 md:mr-2 text-base md:text-lg'></i> Stop
+                </button>
+            </div>
+          </div>
+
+          <div class="relative flex py-5 items-center">
+              <div class="flex-grow border-t border-gray-300"></div>
+              <span class="flex-shrink-0 mx-4 text-gray-400 text-sm font-bold">OR MANUAL INPUT</span>
+              <div class="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          <div>
+              <label class="block text-sm font-bold text-gray-700 mb-2">Add ID Part</label>
+              <div class="flex gap-2">
+                  <input type="text" id="manual_part_id_return" placeholder="Type ID Part..." 
+                         class="w-full flex-1 border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-colors text-sm font-bold font-mono bg-gray-50 focus:bg-white">
+                  <button type="button" onclick="handleManualSearch('return')" class="bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold px-4 md:px-6 py-3 rounded-lg transition-all shadow-md flex items-center justify-center shrink-0">
+                      <i class='bx bx-search mr-1'></i> Search
+                  </button>
+              </div>
+          </div>
+        </div>
+      </div>
+<br><br><br><br>
+    </main>
+  </div>
+
+  <!-- MODAL PICKUP (Tetap Sama) -->
+  <div id="pickupModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[50] backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform transition-all scale-95" id="pickup-modal-box">
+      <div class="bg-indigo-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 id="modal-form-title" class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-package mr-2 text-xl'></i> Form Pengambilan Sparepart
+        </h3>
+        <button onclick="closePickupModal()" class="text-indigo-100 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      
+      <div class="p-6 max-h-[75vh] overflow-y-auto">
+          <form onsubmit="handlePickupSubmit(event)">
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID Part</label>
+                      <input type="text" id="popup_part_id" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-mono font-bold">
+                  </div>
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Stock Tersedia</label>
+                      <input type="text" id="popup_part_stock" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-indigo-600 font-bold">
+                  </div>
+              </div>
+              <div class="mb-5">
+                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Part</label>
+                  <input type="text" id="popup_part_name" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-bold">
+              </div>
+
+              <div class="mb-5">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pilih Work Order</label>
+                <input type="hidden" id="work_order" required>
+                <button type="button" id="btn_select_wo" onclick="openWOModal()" 
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none transition-all text-gray-800 bg-white hover:bg-gray-50 cursor-pointer flex justify-between items-center shadow-sm">
+                    <span id="wo_btn_text" class="text-sm font-medium text-gray-500">Click to Select Work Order...</span>
+                    <i class='bx bx-list-ul text-xl text-indigo-500'></i>
+                </button>
+              </div>
+
+              <div class="mb-6">
+                  <label id="popup-qty-label" class="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah Diambil</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="popup_qty_take" required min="1" placeholder="Masukkan jumlah..." 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-gray-800 font-bold text-lg">
+                    <input type="text" id="popup_unit" readonly class="w-20 px-3 py-3 rounded-lg border border-gray-200 bg-gray-100 text-gray-600 font-bold text-center uppercase">
+                  </div>
+              </div>
+
+              <div class="flex justify-end gap-3 border-t border-gray-100 pt-4 mt-2">
+                  <button type="button" onclick="closePickupModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                  <button type="submit" class="px-5 py-2.5 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 shadow-md transition-colors flex items-center">
+                      <i class='bx bx-check mr-2'></i> <span id="btn-submit-text">Proses Pengambilan</span>
+                  </button>
+              </div>
+          </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RETURN (Tetap Sama) -->
+  <div id="returnModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[50] backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform transition-all scale-95" id="return-modal-box">
+      <div class="bg-pink-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-package mr-2 text-xl'></i> Form Pengembalian Sparepart
+        </h3>
+        <button onclick="closeReturnModal()" class="text-pink-100 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      
+      <div class="p-6 max-h-[75vh] overflow-y-auto">
+          <form onsubmit="handleReturnSubmit(event)">
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID Part</label>
+                      <input type="text" id="return_part_id" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-mono font-bold">
+                  </div>
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Stock Tersedia</label>
+                      <input type="text" id="return_part_stock" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-pink-600 font-bold">
+                  </div>
+              </div>
+              <div class="grid grid-cols-4 gap-4 mb-5">
+                  <div class="col-span-3">
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Part</label>
+                      <input type="text" id="return_part_name" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-bold">
+                  </div>
+                  <div class="col-span-1">
+                      <label class="block text-xs font-bold text-pink-600 uppercase mb-1">Di-Pickup</label>
+                      <input type="text" id="return_part_picked" readonly class="w-full px-3 py-2 rounded border border-pink-200 bg-pink-50 text-pink-600 font-bold text-center">
+                  </div>
+              </div>
+
+              <div class="mb-6">
+                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah Dikembalikan</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="return_qty_take" required min="1" placeholder="Masukkan jumlah..." 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-100 outline-none transition-all text-gray-800 font-bold text-lg">
+                    <input type="text" id="return_unit" readonly class="w-20 px-3 py-3 rounded-lg border border-gray-200 bg-gray-100 text-gray-600 font-bold text-center uppercase">
+                  </div>
+              </div>
+
+              <div class="flex justify-end gap-3 border-t border-gray-100 pt-4 mt-2">
+                  <button type="button" onclick="closeReturnModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                  <button type="submit" class="px-5 py-2.5 bg-pink-500 text-white font-bold rounded-lg hover:bg-pink-600 shadow-md transition-colors flex items-center">
+                      <i class='bx bx-check mr-2'></i> <span>Proses Pengembalian</span>
+                  </button>
+              </div>
+          </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="woModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[60] backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden transform transition-all scale-95" id="wo-modal-box">
+      <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-list-check mr-2 text-xl'></i> Select Your Active Work Order
+        </h3>
+        <button onclick="closeWOModal()" class="text-indigo-200 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      <div class="p-6 max-h-[60vh] overflow-y-auto">
+         <div id="wo-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            </div>
+         <div id="no-wo-message" class="text-center text-gray-500 py-8 hidden">
+            <i class='bx bx-check-circle text-5xl text-gray-300 mb-2'></i>
+            <p>Anda tidak memiliki Work Order aktif saat ini.</p>
+         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Storage Details -->
+  <div id="storageDetailModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[70] backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl w-[95%] sm:w-[700px] max-w-3xl overflow-hidden transform transition-all scale-95" id="storage-detail-modal-box">
+          <div class="bg-orange-500 px-6 py-4 flex justify-between items-center text-white">
+              <h3 class="font-bold text-lg flex items-center"><i class='bx bx-cabinet mr-2 text-xl'></i> Spareparts in Rak <span id="storage-detail-title" class="ml-1"></span></h3>
+              <button onclick="closeStorageDetailModal()" class="text-orange-200 hover:text-white transition-colors">
+                  <i class='bx bx-x text-3xl font-bold'></i>
+              </button>
+          </div>
+
+          <div class="p-4 border-b border-gray-100 bg-gray-50">
+              <div class="relative w-full">
+                  <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg'></i>
+                  <input type="text" id="searchStoragePartInput" onkeyup="filterStorageParts()" placeholder="Cari ID Part atau Nama Part..." 
+                         class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm shadow-sm transition-all">
+              </div>
+          </div>
+
+          <div class="p-0 max-h-[60vh] overflow-y-auto">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-gray-50 sticky top-0 shadow-sm z-10">
+                <tr class="text-gray-500 text-xs uppercase tracking-wider">
+                  <th class="p-4 border-b border-gray-200 font-bold">ID Part</th>
+                  <th class="p-4 border-b border-gray-200 font-bold">Part Name</th>
+                  <th class="p-4 border-b border-gray-200 font-bold text-center">Stock</th>
+                  <th class="p-4 border-b border-gray-200 font-bold text-center">Unit</th>
+                  <th class="p-4 border-b border-gray-200 font-bold text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="storage-detail-body" class="text-sm divide-y divide-gray-100">
+                  <!-- Data di-render JS -->
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button onclick="closeStorageDetailModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors shadow-sm">Kembali</button>
+          </div>
+      </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let masterSpareparts = [];
+    let liveWorkOrders = [];
+    let currentUser = 'Admin Rehand';
+    
+    // Dipisah menjadi dua instance untuk menghindari bentrok elemen
+    let html5QrCodePickup = null;
+    let html5QrCodeReturn = null;
+    
+    let isProcessingQR = false; 
+    let currentMode = 'pickup';
+
+    function switchTab(tab) {
+        currentMode = tab.toLowerCase(); // 'pickup' atau 'return'
+        
+        const viewPickup = document.getElementById('view-pickup');
+        const viewReturn = document.getElementById('view-return');
+        const btnPickup = document.getElementById('tab-btn-pickup');
+        const btnReturn = document.getElementById('tab-btn-return');
+
+        // Pastikan scanner aktif sebelumnya dimatikan agar tidak bentrok
+        stopScanner('pickup');
+        stopScanner('return');
+
+        if (tab === 'PICKUP') {
+            viewPickup.classList.remove('hidden'); viewPickup.classList.add('block');
+            viewReturn.classList.remove('block'); viewReturn.classList.add('hidden');
+            btnPickup.className = "pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors";
+            btnReturn.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors";
+        } else {
+            viewPickup.classList.remove('block'); viewPickup.classList.add('hidden');
+            viewReturn.classList.remove('hidden'); viewReturn.classList.add('block');
+            btnReturn.className = "pb-2 text-sm font-bold border-b-2 border-pink-500 text-pink-600 transition-colors";
+            btnPickup.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors";
+        }
+    }
+
+    function handleLogout() {
+        localStorage.removeItem('userData');
+        window.location.href = 'Login.html';
+    }
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'Pickup.html' && link.getAttribute('href') === 'Pickup.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) { sidebar.classList.remove('sidebar-collapsed'); }
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    let pickupHistory = [];
+    async function fetchData() {
+        try {
+            const [spRes, woRes, pickRes] = await Promise.all([
+                fetch('/api/spareparts').catch(() => null),
+                fetch('/api/workorders').catch(() => null),
+                fetch('/api/pickup').catch(() => null)
+            ]);
+
+            if (spRes && spRes.ok) masterSpareparts = await spRes.json();
+            else masterSpareparts = [];
+
+            if (woRes && woRes.ok) liveWorkOrders = await woRes.json();
+            else liveWorkOrders = [];
+
+            if (pickRes && pickRes.ok) pickupHistory = await pickRes.json();
+            else pickupHistory = [];
+            
+        } catch (err) {
+            console.error("Gagal menarik data dari server.");
+        }
+    }
+
+    // --- LOGIKA SCANNER & SEARCH ---
+
+    function startScanner(mode) {
+        let readerId = mode === 'pickup' ? "reader-pickup" : "reader-return";
+        let qrCodeInstance = mode === 'pickup' ? html5QrCodePickup : html5QrCodeReturn;
+
+        if (!qrCodeInstance) {
+            qrCodeInstance = new Html5Qrcode(readerId);
+            if (mode === 'pickup') html5QrCodePickup = qrCodeInstance;
+            else html5QrCodeReturn = qrCodeInstance;
+        }
+
+        if (qrCodeInstance.isScanning) return; 
+        isProcessingQR = false; 
+
+        qrCodeInstance.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                if (isProcessingQR) return; 
+                isProcessingQR = true; 
+                stopScanner(mode);
+
+                Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, icon: 'success', title: 'Barcode Terbaca!' });
+                processPartId(decodedText, mode);
+            },
+            (errorMessage) => { /* abaikan error */ }
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+        });
+    }
+
+    function stopScanner(mode) {
+        let qrCodeInstance = mode === 'pickup' ? html5QrCodePickup : html5QrCodeReturn;
+        if (qrCodeInstance && qrCodeInstance.isScanning) {
+            qrCodeInstance.stop().then(() => {
+                isProcessingQR = false; 
+            }).catch(err => { console.error("Stop failed", err); });
+        }
+    }
+
+    function handleManualSearch(mode) {
+        const inputId = mode === 'pickup' ? 'manual_part_id_pickup' : 'manual_part_id_return';
+        const val = document.getElementById(inputId).value;
+        if (!val) {
+            Swal.fire('Warning', 'Harap masukkan ID Part!', 'warning');
+            return;
+        }
+        processPartId(val, mode);
+    }
+
+    function processPartId(scannedId, mode) {
+        const queryTrimmed = scannedId.trim().toLowerCase();
+        
+        // Cek apakah scan mengarah ke Part ID
+        const foundPart = masterSpareparts.find(p => p.id_part.toLowerCase() === queryTrimmed);
+
+        // Jika bukan Part ID, cek apakah mengarah ke Nama Storage (Rak)
+        const partsInStorage = masterSpareparts.filter(p => (p.storage || 'Unknown').toLowerCase() === queryTrimmed);
+
+        if (foundPart) {
+            openFormModalWithPart(foundPart, mode);
+        } else if (partsInStorage.length > 0) {
+            // Jika yang di-scan adalah Rak
+            openStorageDetailModal(partsInStorage[0].storage, mode);
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Data Tidak Ditemukan',
+                text: `Data "${scannedId}" tidak terdaftar sebagai Part ID maupun Storage Location.`,
+                confirmButtonColor: '#4f46e5'
+            });
+            isProcessingQR = false; 
+        }
+    }
+
+    function openFormModalWithPart(foundPart, mode) {
+        if (mode === 'pickup') {
+            document.getElementById('popup_part_id').value = foundPart.id_part;
+            document.getElementById('popup_part_name').value = foundPart.name;
+            document.getElementById('popup_part_stock').value = foundPart.stock;
+            document.getElementById('popup_unit').value = foundPart.unit || 'PCS';
+            
+            const qtyInput = document.getElementById('popup_qty_take');
+            qtyInput.value = "";
+            qtyInput.max = foundPart.stock;
+
+            document.getElementById('work_order').value = "";
+            document.getElementById('wo_btn_text').innerHTML = `<span class="text-sm font-medium text-gray-500">Click to Select Work Order...</span>`;
+
+            openPickupModal();
+        } else {
+            document.getElementById('return_part_id').value = foundPart.id_part;
+            document.getElementById('return_part_name').value = foundPart.name;
+            document.getElementById('return_part_stock').value = foundPart.stock;
+            document.getElementById('return_unit').value = foundPart.unit || 'PCS';
+            
+            let totalPickedUp = 0;
+            if (typeof pickupHistory !== 'undefined' && Array.isArray(pickupHistory) && pickupHistory.length > 0) {
+                pickupHistory.forEach(record => {
+                    if (String(record.technician).trim().toLowerCase() === String(currentUser).trim().toLowerCase() && String(record.id_part).trim() === String(foundPart.id_part).trim()) {
+                        totalPickedUp += parseInt(record.qty) || 0;
+                    }
+                });
+            }
+            
+            const pickedEl = document.getElementById('return_part_picked');
+            if (pickedEl) pickedEl.value = totalPickedUp;
+            
+            const qtyInput = document.getElementById('return_qty_take');
+            qtyInput.value = "";
+            
+            if (totalPickedUp > 0) {
+                qtyInput.max = totalPickedUp;
+            } else {
+                qtyInput.max = 0; 
+            }
+
+            openReturnModal();
+        }
+    }
+
+    // --- LOGIKA MODAL PICKUP ---
+
+    function openPickupModal() {
+        const modal = document.getElementById('pickupModal');
+        const box = document.getElementById('pickup-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closePickupModal() {
+        const modal = document.getElementById('pickupModal');
+        const box = document.getElementById('pickup-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        isProcessingQR = false; 
+    }
+
+    function openReturnModal() {
+        const modal = document.getElementById('returnModal');
+        const box = document.getElementById('return-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeReturnModal() {
+        const modal = document.getElementById('returnModal');
+        const box = document.getElementById('return-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        isProcessingQR = false; 
+    }
+
+    // --- LOGIKA MODAL WORK ORDER ---
+
+    function openWOModal() {
+        const woGrid = document.getElementById('wo-grid');
+        const noWoMsg = document.getElementById('no-wo-message');
+        woGrid.innerHTML = '';
+
+        let userWOs = liveWorkOrders.filter(wo => {
+            return wo.status !== 'COMPLETED' && 
+                   wo.status !== 'CLOSED' && 
+                   wo.technician === currentUser;
+        });
+
+        if (currentMode === 'return') {
+            const partIdToReturn = document.getElementById('return_part_id').value;
+            userWOs = userWOs.filter(wo => {
+                if (wo.spareparts && Array.isArray(wo.spareparts)) {
+                    return wo.spareparts.some(sp => sp.id_part === partIdToReturn);
+                }
+                return JSON.stringify(wo).includes(partIdToReturn);
+            });
+        }
+
+        if (userWOs.length > 0) {
+            noWoMsg.classList.add('hidden');
+            userWOs.forEach(wo => {
+                const woId = `WO-${wo.id}`;
+                const isCorrective = wo.type === 'CORRECTIVE';
+                const badgeColor = isCorrective ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+                
+                const boxHtml = `
+                    <div onclick="selectWO('${woId}', '${wo.issue_desc ? wo.issue_desc.replace(/'/g, "\\'") : ''}')" 
+                         class="p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-extrabold text-gray-800">${woId}</h4>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${badgeColor}">${wo.type}</span>
+                        </div>
+                        <h5 class="text-sm font-bold text-gray-700 truncate">${wo.machine_name || 'Mesin Tanpa Nama'}</h5>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2 italic">"${wo.issue_desc || 'Tidak ada deskripsi'}"</p>
+                    </div>
+                `;
+                woGrid.innerHTML += boxHtml;
+            });
+        } else {
+            noWoMsg.classList.remove('hidden');
+            if (currentMode === 'return') {
+                noWoMsg.innerHTML = `
+                    <i class='bx bx-x-circle text-5xl text-gray-300 mb-2'></i>
+                    <p>Tidak ada Work Order aktif yang menggunakan sparepart ini.</p>
+                `;
+            } else {
+                noWoMsg.innerHTML = `
+                    <i class='bx bx-check-circle text-5xl text-gray-300 mb-2'></i>
+                    <p>Anda tidak memiliki Work Order aktif saat ini.</p>
+                `;
+            }
+        }
+
+        const modal = document.getElementById('woModal');
+        const box = document.getElementById('wo-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeWOModal() {
+        const modal = document.getElementById('woModal');
+        const box = document.getElementById('wo-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function selectWO(woId, issueDesc) {
+        if (currentMode === 'pickup') {
+            document.getElementById('work_order').value = woId;
+            const btnText = document.getElementById('wo_btn_text');
+            btnText.innerHTML = `<span class="font-bold text-indigo-600">${woId}</span> <span class="text-gray-500 text-sm ml-2 truncate">(${issueDesc.substring(0, 25)}...)</span>`;
+        } else {
+            document.getElementById('return_work_order').value = woId;
+            const btnText = document.getElementById('wo_btn_text_return');
+            btnText.innerHTML = `<span class="font-bold text-pink-600">${woId}</span> <span class="text-gray-500 text-sm ml-2 truncate">(${issueDesc.substring(0, 25)}...)</span>`;
+        }
+        closeWOModal();
+    }
+    // --- SUBMIT PICKUP ---
+
+    async function handlePickupSubmit(e) {
+        e.preventDefault();
+        
+        const partId = document.getElementById('popup_part_id').value;
+        const qtyToTake = parseInt(document.getElementById('popup_qty_take').value);
+        const currentStock = parseInt(document.getElementById('popup_part_stock').value);
+        const woInput = document.getElementById('work_order').value;
+
+        if (qtyToTake > currentStock) {
+            Swal.fire('Stok Tidak Cukup', `Stok yang tersedia hanya ${currentStock}.`, 'error');
+            return;
+        }
+
+        if (!woInput) {
+            Swal.fire('Pilih Work Order', 'Harap pilih Work Order terkait.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Memproses...',
+            text: 'Mencatat pengambilan ke database',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            const payload = {
+                id_part: partId,
+                qty: qtyToTake,
+                work_order: woInput,
+                technician: currentUser
+            };
+
+            const res = await fetch('/api/pickup', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                closePickupModal();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: `${qtyToTake} item (${partId}) dicatat untuk ${woInput}.`,
+                    confirmButtonColor: '#4f46e5'
+                }).then(() => {
+                    document.getElementById('manual_part_id_pickup').value = '';
+                    isProcessingQR = false;
+                    fetchData(); 
+                });
+            } else {
+                const err = await res.json();
+                Swal.fire('Gagal', err.error || 'Terjadi kesalahan pada server.', 'error');
+            }
+        } catch(err) { 
+            Swal.fire('Error', 'Gagal koneksi ke server database', 'error');
+        }
+    }
+
+    async function handleReturnSubmit(e) {
+    e.preventDefault();
+    
+    const partId = document.getElementById('return_part_id').value;
+    const qtyToReturn = parseInt(document.getElementById('return_qty_take').value);
+    const maxReturn = parseInt(document.getElementById('return_part_picked').value) || 0;
+    const woInput = "Direct Return"; // Default bypass untuk record
+
+    if (qtyToReturn > maxReturn) {
+        Swal.fire('Penolakan Sistem', `Anda hanya memiliki ${maxReturn} item ini. Tidak dapat mengembalikan lebih dari yang di-pickup.`, 'error');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Memproses...',
+        text: 'Mencatat pengembalian ke database',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        const payload = {
+            id_part: partId,
+            qty: -qtyToReturn,
+            work_order: woInput,
+            technician: currentUser
+        };
+
+        const res = await fetch('/api/pickup', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if(res.ok) {
+            closeReturnModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: `${qtyToReturn} item (${partId}) dikembalikan untuk ${woInput}.`,
+                confirmButtonColor: '#4f46e5'
+            }).then(() => {
+                document.getElementById('manual_part_id_return').value = '';
+                isProcessingQR = false;
+                fetchData(); 
+            });
+        } else {
+            // Perbaikan: Tangkap teks mentah dulu agar tidak error saat parsing JSON
+            const textRes = await res.text();
+            let errMsg = `Server merespons dengan status ${res.status}`;
+            try {
+                const jsonRes = JSON.parse(textRes);
+                errMsg = jsonRes.error || errMsg;
+            } catch(jsonErr) {
+                console.error("Respons dari server bukan JSON:", textRes);
+            }
+            Swal.fire('Gagal', errMsg, 'error');
+        }
+    } catch(err) { 
+        console.error("Fetch Error:", err);
+        Swal.fire('Error', `Gagal koneksi ke server: ${err.message}`, 'error');
+    }
+}
+
+    let currentDetailRack = '';
+
+    function openStorageDetailModal(rack, mode) {
+        const modal = document.getElementById('storageDetailModal');
+        const box = document.getElementById('storage-detail-modal-box');
+        
+        currentDetailRack = rack;
+        document.getElementById('storage-detail-title').innerText = rack;
+        document.getElementById('searchStoragePartInput').value = '';
+        
+        renderStoragePartsTable('');
+
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function filterStorageParts() {
+        const query = document.getElementById('searchStoragePartInput').value.toLowerCase();
+        renderStoragePartsTable(query);
+    }
+
+    function renderStoragePartsTable(query) {
+        const tbody = document.getElementById('storage-detail-body');
+        tbody.innerHTML = '';
+
+        const parts = masterSpareparts.filter(item => {
+            const matchRack = (item.storage ? item.storage.trim() : 'Unknown') === currentDetailRack;
+            const matchQuery = (item.name || '').toLowerCase().includes(query) || (item.id_part || '').toLowerCase().includes(query);
+            return matchRack && matchQuery;
+        });
+
+        if (parts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-6 italic">Tidak ada part yang sesuai di rak ini.</td></tr>';
+        } else {
+            parts.forEach(p => {
+                const isLow = p.stock <= (p.min_stock || 5);
+                const qtyClass = isLow ? 'bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs' : 'font-bold text-gray-800';
+                
+                // Set warna tombol berdasarkan currentMode ('pickup' / 'return')
+                const btnClass = currentMode === 'pickup' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200' : 'bg-pink-50 text-pink-600 hover:bg-pink-100 border border-pink-200';
+                const btnText = currentMode === 'pickup' ? 'Pick Up' : 'Return';
+                const btnIcon = currentMode === 'pickup' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition-colors border-b border-gray-100">
+                        <td class="p-4 font-mono text-gray-500 text-sm">${p.id_part || '-'}</td>
+                        <td class="p-4 font-semibold text-gray-800 text-sm">${p.name || '-'}</td>
+                        <td class="p-4 text-center"><span class="${qtyClass}">${p.stock !== undefined ? p.stock : 0}</span></td>
+                        <td class="p-4 text-center text-gray-600 text-xs font-bold uppercase">${p.unit || '-'}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="selectPartFromStorage('${p.id_part}')" class="${btnClass} rounded-lg px-3 py-1.5 transition-all text-xs font-bold shadow-sm"><i class='bx ${btnIcon} mr-1'></i> ${btnText}</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    }
+
+    function selectPartFromStorage(id_part) {
+        closeStorageDetailModal();
+        const foundPart = masterSpareparts.find(p => p.id_part === id_part);
+        if (foundPart) {
+            openFormModalWithPart(foundPart, currentMode);
+        }
+    }
+
+    function closeStorageDetailModal() {
+        const modal = document.getElementById('storageDetailModal');
+        const box = document.getElementById('storage-detail-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        isProcessingQR = false; // Reset status scanner
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData && userData.name) {
+          currentUser = userData.name;
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+
+      const inventorySubmenu = document.getElementById('submenu-inventory');
+      if (inventorySubmenu) {
+          inventorySubmenu.classList.remove('hidden'); inventorySubmenu.classList.add('block');
+          inventorySubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+      }
+
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+          if (link.getAttribute('href') === path) {
+              link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+              link.classList.add('bg-orange-500', 'text-white');
+          }
+      });
+
+      fetchData();
+    });
+</script>
+<script src="gtranslate.js"></script>
+<script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

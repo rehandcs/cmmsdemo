@@ -1,0 +1,1760 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pick Up & Return Sparepart - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+        html, body { max-width: 100%; overflow-x: hidden; }
+        @media (max-width: 767px) {
+            #sidebar { width: 18rem; }
+            main { padding: 0.75rem; gap: 1rem; }
+            main > section { border-radius: 0.75rem; }
+            #form-warehouse > div:last-child { flex-wrap: wrap; gap: 0.75rem; }
+            #form-warehouse > div:last-child > button { flex: 1 1 100%; justify-content: center; }
+        }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+    .reader-container video { object-fit: cover; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout Terbagi 2 -->
+    <main class="flex-1 min-w-0 overflow-y-auto p-3 md:p-6 flex flex-col gap-4 md:gap-6 w-full max-w-7xl mx-auto">
+      
+      <!-- TAB NAVIGATION UTK WAREHOUSE, WORKSHOP & ACTUAL STORAGE -->
+    <div class="flex space-x-4 border-b border-gray-200 shrink-0 overflow-x-auto pb-1">
+          <button id="tab-btn-warehouse" onclick="switchArrivalTab('warehouse')" class="pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors whitespace-nowrap">
+              <i class='bx bx-buildings mr-1'></i> Arrival in Warehouse
+          </button>
+          <button id="tab-btn-workshop" onclick="switchArrivalTab('workshop')" class="pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap">
+              <i class='bx bx-wrench mr-1'></i> Arrival in Workshop
+          </button>
+          <button id="tab-btn-storage" onclick="switchArrivalTab('storage')" class="pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap">
+              <i class='bx bx-cabinet mr-1'></i> Actual Storage
+          </button>
+      </div>
+
+      <!-- BAGIAN ATAS: Arrival in Warehouse -->
+    <section id="view-warehouse" class="bg-white shadow-sm border border-gray-200 rounded-2xl p-4 md:p-6 block min-w-0">
+          <div class="border-b border-gray-100 pb-3 mb-4 flex items-center justify-between">
+              <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                  <i class='bx bx-buildings text-indigo-500 mr-2 text-xl'></i> Arrival in Warehouse
+              </h2>
+          </div>
+          
+          <form id="form-warehouse" onsubmit="handleWarehouseSubmit(event)">
+              <div id="warehouse-parts-container">
+                  <div class="part-block mb-8 border-b-2 border-dashed border-gray-200 pb-6" id="part-block-0" data-index="0">
+                      <div class="flex justify-between items-center mb-3">
+                          <h3 class="font-bold text-gray-700">Part #1</h3>
+                      </div>
+                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID Part</label>
+                              <div class="flex gap-2">
+                                  <div class="relative flex-1">
+                                      <input type="text" id="in_id_part_0" required onchange="autoFillData(0)" placeholder="Pilih / Ketik ID Baru..." class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                                      <button type="button" onclick="openPartModal(0)" class="absolute right-0 top-0 bottom-0 px-3 text-gray-500 hover:text-indigo-600 focus:outline-none flex items-center justify-center bg-gray-100 border-l border-gray-300 rounded-r-lg">
+                                          <i class='bx bx-chevron-down text-xl'></i>
+                                      </button>
+                                  </div>
+                                  <button type="button" onclick="startCameraScanner('warehouse', 0)" class="px-3 py-2 bg-orange-100 text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-200 flex items-center justify-center" title="Scan Barcode">
+                                      <i class='bx bx-qr-scan text-xl'></i>
+                                  </button>
+                              </div>
+                          </div>
+                          <div>
+                              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Sparepart / Material</label>
+                              <input list="list-material-name" id="in_material_name_0" required placeholder="Pilih / Ketik Nama..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                              <datalist id="list-material-name"></datalist>
+                          </div>
+                          <div>
+                              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Supplier Name</label>
+                              <input list="list-supplier" id="in_supplier_0" placeholder="Pilih / Ketik Supplier..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                              <datalist id="list-supplier"></datalist>
+                          </div>
+                          <div>
+                              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Item Short Text</label>
+                              <input list="list-short-text" id="in_short_text_0" placeholder="Spesifikasi / Deskripsi..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                              <datalist id="list-short-text"></datalist>
+                          </div>
+                          <div class="flex gap-2">
+                              <div class="flex-1">
+                                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Min. Stock</label>
+                                  <input type="number" id="in_min_stock_0" placeholder="Min..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                              </div>
+                              <div class="flex-1">
+                                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Price / Unit</label>
+                                  <input type="number" id="in_price_0" placeholder="Rp..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                              </div>
+                          </div>
+                          <div>
+                              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Purchase Unit</label>
+                              <input list="list-unit" id="in_unit_0" required placeholder="PCS / SET / LTR..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none uppercase">
+                              <datalist id="list-unit">
+                                  <option value="PCS"></option><option value="SET"></option><option value="LTR"></option><option value="KG"></option>
+                              </datalist>
+                          </div>
+                      </div>
+
+                      <hr class="my-5 border-gray-200">
+                      
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Kedatangan</label>
+                              <input type="date" id="in_arrival_date_0" required class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                          </div>
+                          <div class="flex gap-2">
+                              <div class="flex-1">
+                                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Qty Sebelum</label>
+                                  <input type="number" id="in_current_stock_0" readonly value="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 text-gray-600 font-bold">
+                              </div>
+                              <div class="flex-1">
+                                  <label class="block text-xs font-bold text-indigo-600 uppercase mb-1">Qty Kedatangan</label>
+                                  <input type="number" id="in_add_qty_0" required min="1" value="1" class="w-full px-3 py-2 rounded-lg border border-indigo-300 focus:border-indigo-500 bg-indigo-50 font-bold outline-none">
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="mt-4 flex justify-between items-center">
+                  <button type="button" onclick="addPartForm()" class="px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-200 transition-all flex items-center shadow-sm">
+                      <i class='bx bx-plus mr-1 text-xl'></i> Tambah Part
+                  </button>
+                  <button type="submit" class="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-all flex items-center">
+                      <i class='bx bx-down-arrow-circle mr-2'></i> Proses ke Workshop
+                  </button>
+              </div>
+              <br><br>
+          </form>
+      </section>
+
+      <!-- BAGIAN BAWAH: Arrival in Workshop -->
+      <!-- BAGIAN BAWAH: Arrival in Workshop -->
+      <section id="view-workshop" class="bg-white shadow-sm border border-gray-200 rounded-2xl flex-1 flex flex-col overflow-hidden hidden">
+          <div class="p-5 md:p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                  <i class='bx bx-wrench text-orange-500 mr-2 text-xl'></i> Arrival in Workshop
+              </h2>
+          </div>
+          
+          <div class="flex-1 overflow-x-auto bg-white p-4">
+              <table class="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                      <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                          <th class="p-3 border-b border-gray-200 font-bold">ID Part</th>
+                          <th class="p-3 border-b border-gray-200 font-bold">Nama Item</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Tanggal</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Qty Sebelum</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Qty Kedatangan</th>
+                          <th class="p-3 border-b border-gray-200 font-bold">Storage Location (Rak)</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Aksi</th>
+                      </tr>
+                  </thead>
+                  <tbody id="staging-table-body" class="text-sm">
+                      <tr>
+                          <td colspan="6" class="text-center p-8 text-gray-400 italic">Belum ada sparepart yang diproses dari Warehouse.</td>
+                      </tr>
+                  </tbody>
+              </table>
+          </div>
+
+          <!-- Tombol "Simpan Semua" dihapus agar penyimpanan dilakukan satu per satu di tabel aksi -->
+          <br><br>
+      </section>
+
+      <!-- BAGIAN KETIGA: Actual Storage -->
+      <section id="view-storage" class="bg-transparent flex-1 flex flex-col overflow-hidden hidden">
+          <div class="mb-4">
+              <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                  <i class='bx bx-cabinet text-teal-500 mr-2 text-xl'></i> Actual Storage
+              </h2>
+              <p class="text-sm text-gray-500">Daftar lokasi penyimpanan rak dan jumlah tipe sparepart di dalamnya.</p>
+          </div>
+          
+          <!-- Tambahan Fitur Pencarian Canggih -->
+          <div class="mb-4 relative">
+              <input type="text" id="globalPartSearch" onkeyup="searchGlobalPart()" placeholder="Cari nama / kata terdekat sparepart..." class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 shadow-sm text-gray-700 font-medium transition-all">
+              <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl'></i>
+              <div id="globalPartSearchResults" class="absolute z-[80] w-full bg-white border border-gray-200 shadow-2xl rounded-xl mt-2 hidden max-h-72 overflow-y-auto">
+              </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto">
+              <div id="storage-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-10">
+                  <!-- Card Rak Akan Dimuat Via JS -->
+              </div>
+          </div>
+      </section>
+  </main>
+  </div>
+
+  <!-- Modal Actual Storage Details (Khusus Tab Storage) -->
+  <div id="actualStorageModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[70] backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden transform transition-all scale-95 flex flex-col max-h-[90vh]" id="actual-storage-modal-box">
+          <div class="bg-teal-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
+              <h3 class="font-bold text-lg flex items-center tracking-wide">
+                  <i class='bx bx-cabinet mr-2 text-xl'></i> Rak: <span id="actual-storage-title" class="ml-1"></span>
+              </h3>
+              <button type="button" onclick="closeActualStorageModal()" class="text-teal-200 hover:text-white transition-colors">
+                  <i class='bx bx-x text-2xl font-bold'></i>
+              </button>
+          </div>
+          
+          <div class="p-4 border-b border-gray-100 bg-gray-50 shrink-0 grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div class="relative col-span-1 md:col-span-2">
+                  <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg'></i>
+                  <input type="text" id="searchActualStorageInput" onkeyup="filterActualStorageTable()" placeholder="Cari sparepart di dalam rak ini..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-medium text-gray-700 shadow-sm">
+              </div>
+              <div class="flex gap-2 col-span-1 md:col-span-2">
+                  <input type="date" id="filterDateStorage" onchange="filterActualStorageTable()" title="Filter by Date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-teal-500 shadow-sm text-sm text-gray-700">
+                  <input type="month" id="filterMonthStorage" onchange="filterActualStorageTable()" title="Filter by Month" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-teal-500 shadow-sm text-sm text-gray-700">
+                  <button onclick="downloadExcelStorage()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center shadow-sm transition-colors whitespace-nowrap" title="Download Excel">
+                      <i class='bx bx-spreadsheet mr-1'></i> Download Excel
+                  </button>
+              </div>
+          </div>
+
+          <div class="p-0 overflow-y-auto flex-1">
+              <table class="w-full text-left border-collapse" id="actual-storage-table">
+                  <thead class="sticky top-0 bg-gray-100 z-10 shadow-sm">
+                      <tr class="text-gray-500 text-xs uppercase tracking-wider">
+                          <th class="p-3 border-b border-gray-200 font-bold">ID Part</th>
+                          <th class="p-3 border-b border-gray-200 font-bold">Nama</th>
+                          <th class="p-3 border-b border-gray-200 font-bold hidden md:table-cell">Supplier</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Stock</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Terakhir Berubah</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Oleh</th>
+                      </tr>
+                  </thead>
+                  <tbody id="actual-storage-tbody" class="text-sm">
+                      <!-- Data akan diisi via JS -->
+                  </tbody>
+              </table>
+          </div>
+      </div>
+  </div>
+
+  <!-- MODAL PICKUP (Tetap Sama) -->
+  <div id="pickupModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[50] backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform transition-all scale-95" id="pickup-modal-box">
+      <div class="bg-indigo-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 id="modal-form-title" class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-package mr-2 text-xl'></i> Form Pengambilan Sparepart
+        </h3>
+        <button onclick="closePickupModal()" class="text-indigo-100 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      
+      <div class="p-6">
+          <form onsubmit="handlePickupSubmit(event)">
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID Part</label>
+                      <input type="text" id="popup_part_id" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-mono font-bold">
+                  </div>
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Stock Tersedia</label>
+                      <input type="text" id="popup_part_stock" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-indigo-600 font-bold">
+                  </div>
+              </div>
+              <div class="mb-5">
+                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Part</label>
+                  <input type="text" id="popup_part_name" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-bold">
+              </div>
+
+              <div class="mb-5">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pilih Work Order</label>
+                <input type="hidden" id="work_order" required>
+                <button type="button" id="btn_select_wo" onclick="openWOModal()" 
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none transition-all text-gray-800 bg-white hover:bg-gray-50 cursor-pointer flex justify-between items-center shadow-sm">
+                    <span id="wo_btn_text" class="text-sm font-medium text-gray-500">Click to Select Work Order...</span>
+                    <i class='bx bx-list-ul text-xl text-indigo-500'></i>
+                </button>
+              </div>
+
+              <div class="mb-6">
+                  <label id="popup-qty-label" class="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah Diambil</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="popup_qty_take" required min="1" placeholder="Masukkan jumlah..." 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-gray-800 font-bold text-lg">
+                    <input type="text" id="popup_unit" readonly class="w-20 px-3 py-3 rounded-lg border border-gray-200 bg-gray-100 text-gray-600 font-bold text-center uppercase">
+                  </div>
+              </div>
+
+              <div class="flex justify-end gap-3 border-t border-gray-100 pt-4 mt-2">
+                  <button type="button" onclick="closePickupModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                  <button type="submit" class="px-5 py-2.5 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 shadow-md transition-colors flex items-center">
+                      <i class='bx bx-check mr-2'></i> <span id="btn-submit-text">Proses Pengambilan</span>
+                  </button>
+              </div>
+          </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RETURN (Tetap Sama) -->
+  <div id="returnModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[50] backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform transition-all scale-95" id="return-modal-box">
+      <div class="bg-pink-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-package mr-2 text-xl'></i> Form Pengembalian Sparepart
+        </h3>
+        <button onclick="closeReturnModal()" class="text-pink-100 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      
+      <div class="p-6">
+          <form onsubmit="handleReturnSubmit(event)">
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID Part</label>
+                      <input type="text" id="return_part_id" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-mono font-bold">
+                  </div>
+                  <div>
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Stock Tersedia</label>
+                      <input type="text" id="return_part_stock" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-pink-600 font-bold">
+                  </div>
+              </div>
+              <div class="mb-5">
+                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Part</label>
+                  <input type="text" id="return_part_name" readonly class="w-full px-3 py-2 rounded border border-gray-200 bg-gray-100 text-gray-700 font-bold">
+              </div>
+
+              <div class="mb-5">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pilih Work Order</label>
+                <input type="hidden" id="return_work_order" required>
+                <button type="button" id="btn_select_wo_return" onclick="openWOModal()" 
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-pink-500 outline-none transition-all text-gray-800 bg-white hover:bg-gray-50 cursor-pointer flex justify-between items-center shadow-sm">
+                    <span id="wo_btn_text_return" class="text-sm font-medium text-gray-500">Click to Select Work Order...</span>
+                    <i class='bx bx-list-ul text-xl text-pink-500'></i>
+                </button>
+              </div>
+
+              <div class="mb-6">
+                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah Dikembalikan</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="return_qty_take" required min="1" placeholder="Masukkan jumlah..." 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-100 outline-none transition-all text-gray-800 font-bold text-lg">
+                    <input type="text" id="return_unit" readonly class="w-20 px-3 py-3 rounded-lg border border-gray-200 bg-gray-100 text-gray-600 font-bold text-center uppercase">
+                  </div>
+              </div>
+
+              <div class="flex justify-end gap-3 border-t border-gray-100 pt-4 mt-2">
+                  <button type="button" onclick="closeReturnModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                  <button type="submit" class="px-5 py-2.5 bg-pink-500 text-white font-bold rounded-lg hover:bg-pink-600 shadow-md transition-colors flex items-center">
+                      <i class='bx bx-check mr-2'></i> <span>Proses Pengembalian</span>
+                  </button>
+              </div>
+          </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="woModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[60] backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden transform transition-all scale-95" id="wo-modal-box">
+      <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-list-check mr-2 text-xl'></i> Select Your Active Work Order
+        </h3>
+        <button onclick="closeWOModal()" class="text-indigo-200 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      <div class="p-6 max-h-[60vh] overflow-y-auto">
+         <div id="wo-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            </div>
+         <div id="no-wo-message" class="text-center text-gray-500 py-8 hidden">
+            <i class='bx bx-check-circle text-5xl text-gray-300 mb-2'></i>
+            <p>Anda tidak memiliki Work Order aktif saat ini.</p>
+         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Data Master Sparepart (Segitiga Kebalik) -->
+  <div id="partModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[60] backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden transform transition-all scale-95" id="part-modal-box">
+          <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+              <h3 class="font-bold text-lg flex items-center tracking-wide">
+                  <i class='bx bx-data mr-2 text-xl'></i> Pilih Data Sparepart
+              </h3>
+              <button type="button" onclick="closePartModal()" class="text-indigo-200 hover:text-white transition-colors">
+                  <i class='bx bx-x text-2xl font-bold'></i>
+              </button>
+          </div>
+          <div class="p-4 border-b border-gray-100 bg-gray-50">
+              <div class="relative">
+                  <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg'></i>
+                  <input type="text" id="searchPartInput" onkeyup="filterPartTable()" placeholder="Ketik untuk mencari ID Part, Nama, atau Supplier..." class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 font-medium text-gray-700 shadow-sm">
+              </div>
+          </div>
+          <div class="p-0 max-h-[50vh] overflow-y-auto">
+              <table class="w-full text-left border-collapse">
+                  <thead class="sticky top-0 bg-gray-100 z-10 shadow-sm">
+                      <tr class="text-gray-500 text-xs uppercase tracking-wider">
+                          <th class="p-3 border-b border-gray-200 font-bold">ID Part</th>
+                          <th class="p-3 border-b border-gray-200 font-bold">Nama</th>
+                          <th class="p-3 border-b border-gray-200 font-bold hidden md:table-cell">Supplier</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Stock</th>
+                          <th class="p-3 border-b border-gray-200 font-bold text-center">Aksi</th>
+                      </tr>
+                  </thead>
+                  <tbody id="part-table-body" class="text-sm">
+                      <!-- Data akan diisi via JS -->
+                  </tbody>
+              </table>
+          </div>
+      </div>
+  </div>
+
+  <!-- Modal Data Storage Location (Rak) -->
+  <div id="locationModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[60] backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-95" id="location-modal-box">
+          <div class="bg-orange-500 px-6 py-4 flex justify-between items-center text-white">
+              <h3 class="font-bold text-lg flex items-center tracking-wide">
+                  <i class='bx bx-server mr-2 text-xl'></i> Pilih Storage Location
+              </h3>
+              <button type="button" onclick="closeLocationModal()" class="text-orange-200 hover:text-white transition-colors">
+                  <i class='bx bx-x text-2xl font-bold'></i>
+              </button>
+          </div>
+          <div class="p-4 border-b border-gray-100 bg-gray-50">
+              <div class="relative">
+                  <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg'></i>
+                  <input type="text" id="searchLocationInput" onkeyup="filterLocationList()" placeholder="Ketik untuk mencari rak..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 font-medium text-gray-700 shadow-sm text-sm">
+              </div>
+          </div>
+          <div class="p-0 max-h-[50vh] overflow-y-auto">
+              <ul id="location-list" class="divide-y divide-gray-100">
+                  <!-- Data Rak akan diisi via JS -->
+              </ul>
+          </div>
+      </div>
+  </div>
+
+  <!-- Modal Scanner Kamera -->
+  <div id="scannerModal" class="fixed inset-0 bg-black/80 hidden flex-col items-center justify-center z-[100] backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden relative">
+          <div class="p-4 bg-orange-500 text-white flex justify-between items-center">
+              <h3 class="font-bold"><i class='bx bx-qr-scan mr-1'></i> Scan Barcode</h3>
+              <button onclick="stopCameraScanner()" class="text-white hover:text-gray-200 text-2xl leading-none">&times;</button>
+          </div>
+          <div id="reader-workshop" class="w-full bg-black"></div>
+      </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let masterSpareparts = [];
+    let liveWorkOrders = [];
+    let currentUser = 'Admin Rehand';
+    
+    // Dipisah menjadi dua instance untuk menghindari bentrok elemen
+    let html5QrCodePickup = null;
+    let html5QrCodeReturn = null;
+    
+    let isProcessingQR = false; 
+    let currentMode = 'pickup';
+
+    function switchTab(tab) {
+        currentMode = tab.toLowerCase(); // 'pickup' atau 'return'
+        
+        const viewPickup = document.getElementById('view-pickup');
+        const viewReturn = document.getElementById('view-return');
+        const btnPickup = document.getElementById('tab-btn-pickup');
+        const btnReturn = document.getElementById('tab-btn-return');
+
+        // Pastikan scanner aktif sebelumnya dimatikan agar tidak bentrok
+        stopScanner('pickup');
+        stopScanner('return');
+
+        if (tab === 'PICKUP') {
+            viewPickup.classList.remove('hidden'); viewPickup.classList.add('block');
+            viewReturn.classList.remove('block'); viewReturn.classList.add('hidden');
+            btnPickup.className = "pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors";
+            btnReturn.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors";
+        } else {
+            viewPickup.classList.remove('block'); viewPickup.classList.add('hidden');
+            viewReturn.classList.remove('hidden'); viewReturn.classList.add('block');
+            btnReturn.className = "pb-2 text-sm font-bold border-b-2 border-pink-500 text-pink-600 transition-colors";
+            btnPickup.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors";
+        }
+    }
+
+    function handleLogout() {
+        localStorage.removeItem('userData');
+        window.location.href = 'Login.html';
+    }
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'Pickup.html' && link.getAttribute('href') === 'Pickup.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) { sidebar.classList.remove('sidebar-collapsed'); }
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    let pickupHistory = [];
+    async function fetchData() {
+        try {
+            const [spRes, woRes, pickRes, stagingRes] = await Promise.all([
+                fetch('/api/spareparts').catch(() => null),
+                fetch('/api/workorders').catch(() => null),
+                fetch('/api/pickup').catch(() => null),
+                fetch('/api/staging').catch(() => null)
+            ]);
+
+            if (spRes && spRes.ok) {
+                masterSpareparts = await spRes.json();
+                populateDatalists();
+            } else {
+                masterSpareparts = [];
+            }
+
+            if (woRes && woRes.ok) liveWorkOrders = await woRes.json();
+            else liveWorkOrders = [];
+
+            if (pickRes && pickRes.ok) pickupHistory = await pickRes.json();
+            else pickupHistory = [];
+
+            if (stagingRes && stagingRes.ok) stagingWorkshop = await stagingRes.json();
+            else stagingWorkshop = [];
+            
+            renderStorageGrid();
+            renderStagingTable();
+        } catch (err) {
+            console.error("Gagal menarik data dari server.");
+        }
+    }
+
+    // --- LOGIKA SCANNER & SEARCH ---
+
+    function startScanner(mode) {
+        let readerId = mode === 'pickup' ? "reader-pickup" : "reader-return";
+        let qrCodeInstance = mode === 'pickup' ? html5QrCodePickup : html5QrCodeReturn;
+
+        if (!qrCodeInstance) {
+            qrCodeInstance = new Html5Qrcode(readerId);
+            if (mode === 'pickup') html5QrCodePickup = qrCodeInstance;
+            else html5QrCodeReturn = qrCodeInstance;
+        }
+
+        if (qrCodeInstance.isScanning) return; 
+        isProcessingQR = false; 
+
+        qrCodeInstance.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                if (isProcessingQR) return; 
+                isProcessingQR = true; 
+                stopScanner(mode);
+
+                Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, icon: 'success', title: 'Barcode Terbaca!' });
+                processPartId(decodedText, mode);
+            },
+            (errorMessage) => { /* abaikan error */ }
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+        });
+    }
+
+    function stopScanner(mode) {
+        let qrCodeInstance = mode === 'pickup' ? html5QrCodePickup : html5QrCodeReturn;
+        if (qrCodeInstance && qrCodeInstance.isScanning) {
+            qrCodeInstance.stop().then(() => {
+                isProcessingQR = false; 
+            }).catch(err => { console.error("Stop failed", err); });
+        }
+    }
+
+    function handleManualSearch(mode) {
+        const inputId = mode === 'pickup' ? 'manual_part_id_pickup' : 'manual_part_id_return';
+        const val = document.getElementById(inputId).value;
+        if (!val) {
+            Swal.fire('Warning', 'Harap masukkan ID Part!', 'warning');
+            return;
+        }
+        processPartId(val, mode);
+    }
+
+    function processPartId(scannedId, mode) {
+        const partIdTrimmed = scannedId.trim().toLowerCase();
+        
+        // Cari di master database sparepart
+        const foundPart = masterSpareparts.find(p => p.id_part.toLowerCase() === partIdTrimmed);
+
+        if (foundPart) {
+            if (mode === 'pickup') {
+                document.getElementById('popup_part_id').value = foundPart.id_part;
+                document.getElementById('popup_part_name').value = foundPart.name;
+                document.getElementById('popup_part_stock').value = foundPart.stock;
+                document.getElementById('popup_unit').value = foundPart.unit || 'PCS';
+                
+                const qtyInput = document.getElementById('popup_qty_take');
+                qtyInput.value = "";
+                qtyInput.max = foundPart.stock;
+
+                document.getElementById('work_order').value = "";
+                document.getElementById('wo_btn_text').innerHTML = `<span class="text-sm font-medium text-gray-500">Click to Select Work Order...</span>`;
+
+                openPickupModal();
+            } else {
+                document.getElementById('return_part_id').value = foundPart.id_part;
+                document.getElementById('return_part_name').value = foundPart.name;
+                document.getElementById('return_part_stock').value = foundPart.stock;
+                document.getElementById('return_unit').value = foundPart.unit || 'PCS';
+                
+                const qtyInput = document.getElementById('return_qty_take');
+                qtyInput.value = "";
+                qtyInput.removeAttribute('max');
+
+                document.getElementById('return_work_order').value = "";
+                document.getElementById('wo_btn_text_return').innerHTML = `<span class="text-sm font-medium text-gray-500">Click to Select Work Order...</span>`;
+
+                openReturnModal();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Part Tidak Ditemukan',
+                text: `ID Part "${scannedId}" tidak terdaftar di Master Database Sparepart.`,
+                confirmButtonColor: '#4f46e5'
+            });
+            isProcessingQR = false; 
+        }
+    }
+
+    // --- LOGIKA MODAL PICKUP ---
+
+    function openPickupModal() {
+        const modal = document.getElementById('pickupModal');
+        const box = document.getElementById('pickup-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closePickupModal() {
+        const modal = document.getElementById('pickupModal');
+        const box = document.getElementById('pickup-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        isProcessingQR = false; 
+    }
+
+    function openReturnModal() {
+        const modal = document.getElementById('returnModal');
+        const box = document.getElementById('return-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeReturnModal() {
+        const modal = document.getElementById('returnModal');
+        const box = document.getElementById('return-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        isProcessingQR = false; 
+    }
+
+    // --- LOGIKA MODAL WORK ORDER ---
+
+    function openWOModal() {
+        const woGrid = document.getElementById('wo-grid');
+        const noWoMsg = document.getElementById('no-wo-message');
+        woGrid.innerHTML = '';
+
+        const userWOs = liveWorkOrders.filter(wo => {
+            return wo.status !== 'COMPLETED' && 
+                   wo.status !== 'CLOSED' && 
+                   wo.technician === currentUser;
+        });
+
+        if (userWOs.length > 0) {
+            noWoMsg.classList.add('hidden');
+            userWOs.forEach(wo => {
+                const woId = `WO-${wo.id}`;
+                const isCorrective = wo.type === 'CORRECTIVE';
+                const badgeColor = isCorrective ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+                
+                const boxHtml = `
+                    <div onclick="selectWO('${woId}', '${wo.issue_desc ? wo.issue_desc.replace(/'/g, "\\'") : ''}')" 
+                         class="p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-extrabold text-gray-800">${woId}</h4>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${badgeColor}">${wo.type}</span>
+                        </div>
+                        <h5 class="text-sm font-bold text-gray-700 truncate">${wo.machine_name || 'Mesin Tanpa Nama'}</h5>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2 italic">"${wo.issue_desc || 'Tidak ada deskripsi'}"</p>
+                    </div>
+                `;
+                woGrid.innerHTML += boxHtml;
+            });
+        } else {
+            noWoMsg.classList.remove('hidden');
+        }
+
+        const modal = document.getElementById('woModal');
+        const box = document.getElementById('wo-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeWOModal() {
+        const modal = document.getElementById('woModal');
+        const box = document.getElementById('wo-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function selectWO(woId, issueDesc) {
+        if (currentMode === 'pickup') {
+            document.getElementById('work_order').value = woId;
+            const btnText = document.getElementById('wo_btn_text');
+            btnText.innerHTML = `<span class="font-bold text-indigo-600">${woId}</span> <span class="text-gray-500 text-sm ml-2 truncate">(${issueDesc.substring(0, 25)}...)</span>`;
+        } else {
+            document.getElementById('return_work_order').value = woId;
+            const btnText = document.getElementById('wo_btn_text_return');
+            btnText.innerHTML = `<span class="font-bold text-pink-600">${woId}</span> <span class="text-gray-500 text-sm ml-2 truncate">(${issueDesc.substring(0, 25)}...)</span>`;
+        }
+        closeWOModal();
+    }
+    // --- SUBMIT PICKUP ---
+
+    async function handlePickupSubmit(e) {
+        e.preventDefault();
+        
+        const partId = document.getElementById('popup_part_id').value;
+        const qtyToTake = parseInt(document.getElementById('popup_qty_take').value);
+        const currentStock = parseInt(document.getElementById('popup_part_stock').value);
+        const woInput = document.getElementById('work_order').value;
+
+        if (qtyToTake > currentStock) {
+            Swal.fire('Stok Tidak Cukup', `Stok yang tersedia hanya ${currentStock}.`, 'error');
+            return;
+        }
+
+        if (!woInput) {
+            Swal.fire('Pilih Work Order', 'Harap pilih Work Order terkait.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Memproses...',
+            text: 'Mencatat pengambilan ke database',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            const payload = {
+                id_part: partId,
+                qty: qtyToTake,
+                work_order: woInput,
+                technician: currentUser
+            };
+
+            const res = await fetch('/api/pickup', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                closePickupModal();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: `${qtyToTake} item (${partId}) dicatat untuk ${woInput}.`,
+                    confirmButtonColor: '#4f46e5'
+                }).then(() => {
+                    document.getElementById('manual_part_id_pickup').value = '';
+                    isProcessingQR = false;
+                    fetchData(); 
+                });
+            } else {
+                const err = await res.json();
+                Swal.fire('Gagal', err.error || 'Terjadi kesalahan pada server.', 'error');
+            }
+        } catch(err) { 
+            Swal.fire('Error', 'Gagal koneksi ke server database', 'error');
+        }
+    }
+
+    async function handleReturnSubmit(e) {
+    e.preventDefault();
+    
+    const partId = document.getElementById('return_part_id').value;
+    const qtyToReturn = parseInt(document.getElementById('return_qty_take').value);
+    const woInput = document.getElementById('return_work_order').value;
+
+    if (!woInput) {
+        Swal.fire('Pilih Work Order', 'Harap pilih Work Order terkait.', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Memproses...',
+        text: 'Mencatat pengembalian ke database',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        const payload = {
+            id_part: partId,
+            qty: -qtyToReturn,
+            work_order: woInput,
+            technician: currentUser
+        };
+
+        const res = await fetch('/api/pickup', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if(res.ok) {
+            closeReturnModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: `${qtyToReturn} item (${partId}) dikembalikan untuk ${woInput}.`,
+                confirmButtonColor: '#4f46e5'
+            }).then(() => {
+                document.getElementById('manual_part_id_return').value = '';
+                isProcessingQR = false;
+                fetchData(); 
+            });
+        } else {
+            // Perbaikan: Tangkap teks mentah dulu agar tidak error saat parsing JSON
+            const textRes = await res.text();
+            let errMsg = `Server merespons dengan status ${res.status}`;
+            try {
+                const jsonRes = JSON.parse(textRes);
+                errMsg = jsonRes.error || errMsg;
+            } catch(jsonErr) {
+                console.error("Respons dari server bukan JSON:", textRes);
+            }
+            Swal.fire('Gagal', errMsg, 'error');
+        }
+    } catch(err) { 
+        console.error("Fetch Error:", err);
+        Swal.fire('Error', `Gagal koneksi ke server: ${err.message}`, 'error');
+    }
+}
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData && userData.name) {
+          currentUser = userData.name;
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+
+      const inventorySubmenu = document.getElementById('submenu-inventory');
+      if (inventorySubmenu) {
+          inventorySubmenu.classList.remove('hidden'); inventorySubmenu.classList.add('block');
+          inventorySubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+      }
+
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+          if (link.getAttribute('href') === path) {
+              link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+              link.classList.add('bg-orange-500', 'text-white');
+          }
+      });
+
+      fetchData();
+      renderStagingTable();
+    });
+
+    // --- LOGIKA ARRIVAL IN WAREHOUSE & WORKSHOP ---
+    let stagingWorkshop = [];
+
+    function populateDatalists() {
+        const listIdPart = document.getElementById('list-id-part');
+        const listMaterial = document.getElementById('list-material-name');
+        const listSupplier = document.getElementById('list-supplier');
+        
+        let uniqueSuppliers = new Set();
+        
+        if (listIdPart) listIdPart.innerHTML = ''; 
+        if (listMaterial) listMaterial.innerHTML = ''; 
+        if (listSupplier) listSupplier.innerHTML = '';
+        
+        masterSpareparts.forEach(part => {
+            if (listIdPart) listIdPart.innerHTML += `<option value="${part.id_part}">${part.name}</option>`;
+            if (listMaterial) listMaterial.innerHTML += `<option value="${part.name}">${part.id_part}</option>`;
+            if(part.supplier_name && listSupplier) uniqueSuppliers.add(part.supplier_name);
+        });
+
+        if (listSupplier) uniqueSuppliers.forEach(sup => listSupplier.innerHTML += `<option value="${sup}"></option>`);
+    }
+
+    function autoFillData(index = 0) {
+        const inputId = document.getElementById(`in_id_part_${index}`).value;
+        const part = masterSpareparts.find(p => p.id_part === inputId);
+        
+        if (part) {
+            document.getElementById(`in_material_name_${index}`).value = part.name || part.material_name || '';
+            document.getElementById(`in_supplier_${index}`).value = part.supplier_name || '';
+            document.getElementById(`in_short_text_${index}`).value = part.item_short_text || part.spec || '';
+            document.getElementById(`in_current_stock_${index}`).value = part.stock || 0;
+            document.getElementById(`in_min_stock_${index}`).value = part.min_stock || 0;
+            document.getElementById(`in_unit_${index}`).value = part.purchase_unit || part.unit || '';
+            document.getElementById(`in_price_${index}`).value = part.price_per_unit || '';
+        } else {
+            document.getElementById(`in_material_name_${index}`).value = '';
+            document.getElementById(`in_supplier_${index}`).value = '';
+            document.getElementById(`in_short_text_${index}`).value = '';
+            document.getElementById(`in_current_stock_${index}`).value = 0;
+            document.getElementById(`in_min_stock_${index}`).value = '';
+            document.getElementById(`in_unit_${index}`).value = '';
+            document.getElementById(`in_price_${index}`).value = '';
+        }
+    }
+
+    let partFormIndex = 1;
+    let partFormCount = 1;
+
+    function addPartForm() {
+        if(partFormCount >= 10) {
+            Swal.fire('Maksimal 10 Part', 'Anda hanya dapat menambahkan maksimal 10 jenis sparepart sekaligus.', 'warning');
+            return;
+        }
+        const container = document.getElementById('warehouse-parts-container');
+        const index = partFormIndex;
+        const newBlock = document.createElement('div');
+        newBlock.className = "part-block mb-8 border-b-2 border-dashed border-gray-200 pb-6 relative";
+        newBlock.id = `part-block-${index}`;
+        newBlock.setAttribute('data-index', index);
+        
+        newBlock.innerHTML = `
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-gray-700">Part #${partFormCount + 1}</h3>
+                <button type="button" onclick="removePartForm(${index})" class="text-red-500 hover:text-red-700 text-sm font-bold flex items-center"><i class='bx bx-trash mr-1'></i> Hapus</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID Part</label>
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" id="in_id_part_${index}" required onchange="autoFillData(${index})" placeholder="Pilih / Ketik ID Baru..." class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                            <button type="button" onclick="openPartModal(${index})" class="absolute right-0 top-0 bottom-0 px-3 text-gray-500 hover:text-indigo-600 focus:outline-none flex items-center justify-center bg-gray-100 border-l border-gray-300 rounded-r-lg">
+                                <i class='bx bx-chevron-down text-xl'></i>
+                            </button>
+                        </div>
+                        <button type="button" onclick="startCameraScanner('warehouse', ${index})" class="px-3 py-2 bg-orange-100 text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-200 flex items-center justify-center" title="Scan Barcode">
+                            <i class='bx bx-qr-scan text-xl'></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Sparepart / Material</label>
+                    <input list="list-material-name" id="in_material_name_${index}" required placeholder="Pilih / Ketik Nama..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Supplier Name</label>
+                    <input list="list-supplier" id="in_supplier_${index}" placeholder="Pilih / Ketik Supplier..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Item Short Text</label>
+                    <input list="list-short-text" id="in_short_text_${index}" placeholder="Spesifikasi / Deskripsi..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                </div>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Min. Stock</label>
+                        <input type="number" id="in_min_stock_${index}" placeholder="Min..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Price / Unit</label>
+                        <input type="number" id="in_price_${index}" placeholder="Rp..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Purchase Unit</label>
+                    <input list="list-unit" id="in_unit_${index}" required placeholder="PCS / SET / LTR..." class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none uppercase">
+                </div>
+            </div>
+            <hr class="my-5 border-gray-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Kedatangan</label>
+                    <input type="date" id="in_arrival_date_${index}" required class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none">
+                </div>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Qty Sebelum</label>
+                        <input type="number" id="in_current_stock_${index}" readonly value="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 text-gray-600 font-bold">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-indigo-600 uppercase mb-1">Qty Kedatangan</label>
+                        <input type="number" id="in_add_qty_${index}" required min="1" value="1" class="w-full px-3 py-2 rounded-lg border border-indigo-300 focus:border-indigo-500 bg-indigo-50 font-bold outline-none">
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(newBlock);
+        partFormIndex++;
+        partFormCount++;
+    }
+
+    function removePartForm(index) {
+        const block = document.getElementById(`part-block-${index}`);
+        if (block) {
+            block.remove();
+            partFormCount--;
+        }
+    }
+
+    async function handleWarehouseSubmit(e) {
+        e.preventDefault();
+
+        Swal.fire({
+            title: 'Memproses...',
+            text: 'Menyimpan data ke staging database',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        try {
+            const partBlocks = document.querySelectorAll('.part-block');
+            for (const block of partBlocks) {
+                const index = block.getAttribute('data-index');
+                const currentStock = parseInt(document.getElementById(`in_current_stock_${index}`).value) || 0;
+                const addQty = parseInt(document.getElementById(`in_add_qty_${index}`).value) || 1;
+
+                const payload = {
+                    id_part: document.getElementById(`in_id_part_${index}`).value.trim(),
+                    name: document.getElementById(`in_material_name_${index}`).value.trim(),
+                    supplier_name: document.getElementById(`in_supplier_${index}`).value.trim(),
+                    item_short_text: document.getElementById(`in_short_text_${index}`).value.trim(),
+                    qty_sebelum: currentStock,
+                    qty_kedatangan: addQty,
+                    tanggal_kedatangan: document.getElementById(`in_arrival_date_${index}`).value,
+                    min_stock: parseInt(document.getElementById(`in_min_stock_${index}`).value) || 0,
+                    unit: document.getElementById(`in_unit_${index}`).value.toUpperCase(),
+                    price_per_unit: parseFloat(document.getElementById(`in_price_${index}`).value) || 0,
+                    db_id: masterSpareparts.find(p => p.id_part === document.getElementById(`in_id_part_${index}`).value)?.id || null
+                };
+
+                const res = await fetch('/api/staging', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                // VALIDASI: Tangkap pesan error dari server jika gagal insert ke Database
+                if (!res.ok) {
+                    const textRes = await res.text();
+                    let errMsg = `Server error ${res.status}`;
+                    try { 
+                        const jsonRes = JSON.parse(textRes); 
+                        errMsg = jsonRes.error || errMsg; 
+                    } catch(e) {}
+                    throw new Error(errMsg);
+                }
+                
+                if(index !== '0') {
+                    block.remove();
+                }
+            }
+
+            document.getElementById('form-warehouse').reset();
+            document.getElementById('in_current_stock_0').value = 0;
+            document.getElementById('in_add_qty_0').value = 1;
+            partFormIndex = 1;
+            partFormCount = 1;
+            
+            await fetchData(); // Sinkronkan ke tab workshop
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Ditambahkan ke Workshop!', showConfirmButton: false, timer: 1500 });
+            
+            // Memastikan hasil input pindah ke tab workshop untuk ditampilkan
+            switchArrivalTab('workshop');
+        } catch (err) {
+            Swal.fire('Gagal Menyimpan', 'Terjadi kesalahan DB: ' + err.message, 'error');
+        }
+    }
+
+    function renderStagingTable() {
+        const tbody = document.getElementById('staging-table-body');
+        
+        if(!tbody) return;
+
+        tbody.innerHTML = '';
+        if (stagingWorkshop.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-400 italic">Belum ada sparepart yang diproses dari Warehouse.</td></tr>`;
+            return;
+        }
+        
+        stagingWorkshop.forEach((item, index) => {
+            const masterPart = masterSpareparts.find(p => p.id_part === item.id_part);
+            const defaultStorage = item.storage || (masterPart ? masterPart.storage : '');
+            
+            // Memformat tanggal agar hanya mengambil bagian YYYY-MM-DD
+            let formattedDate = item.tanggal_kedatangan ? item.tanggal_kedatangan.split('T')[0] : '-';
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-indigo-50/30 transition-colors border-b border-gray-100" id="row-${index}">
+                    <td class="p-3 font-mono font-bold text-indigo-600">${item.id_part}</td>
+                    <td class="p-3 font-medium text-gray-700">${item.name}</td>
+                    <td class="p-3 text-center text-sm font-medium text-gray-600">${formattedDate}</td>
+                    <td class="p-3 text-center font-bold">${item.qty_sebelum} <span class="text-xs text-gray-400">${item.unit}</span></td>
+                    <td class="p-3 text-center font-bold text-indigo-600">+${item.qty_kedatangan} <span class="text-xs text-gray-400">${item.unit}</span></td>
+                    <td class="p-3 min-w-[250px]">
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <input type="text" 
+                                       id="storage-input-${index}"
+                                       onchange="updateStorageLocation(${index}, this.value)" 
+                                       value="${defaultStorage}"
+                                       placeholder="Pilih / Ketik Rak..." 
+                                       required
+                                       class="w-full px-3 py-1.5 pr-8 rounded-lg border border-gray-300 focus:border-orange-500 outline-none text-sm shadow-sm">
+                                <button type="button" onclick="openLocationModal(${index})" class="absolute right-0 top-0 bottom-0 px-2 text-gray-500 hover:text-orange-600 focus:outline-none flex items-center justify-center bg-gray-100 border-l border-gray-300 rounded-r-lg">
+                                    <i class='bx bx-chevron-down text-lg'></i>
+                                </button>
+                            </div>
+                            <button type="button" onclick="startCameraScanner('workshop-row', ${index})" class="px-2 py-1.5 bg-orange-100 text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-200 flex items-center justify-center" title="Scan Barcode Rak">
+                                <i class='bx bx-qr-scan text-lg'></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-3 text-center flex justify-center items-center gap-4">
+                        <button type="button" onclick="submitSingleToDatabaseMaster(${index})" class="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg font-semibold transition-all" title="Simpan ke Master">
+                            <i class='bx bx-save text-xl'></i> Simpan
+                        </button>
+                        <button type="button" onclick="removeFromStaging(${index})" class="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg font-semibold transition-all" title="Hapus">
+                            <i class='bx bx-trash text-xl'></i> Hapus
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function updateStorageLocation(index, value) {
+        stagingWorkshop[index].storage = value;
+    }
+
+    async function removeFromStaging(index) {
+        const item = stagingWorkshop[index];
+        if (!item || !item.id) return;
+        
+        try {
+            await fetch(`/api/staging/${item.id}`, { method: 'DELETE' });
+            await fetchData(); // Refresh data dari server
+        } catch (err) {
+            Swal.fire('Gagal', 'Gagal menghapus antrean', 'error');
+        }
+    }
+
+    // --- LOGIKA TAB SWITCHER ---
+    function switchArrivalTab(tab) {
+        const viewWarehouse = document.getElementById('view-warehouse');
+        const viewWorkshop = document.getElementById('view-workshop');
+        const viewStorage = document.getElementById('view-storage');
+        
+        const btnWarehouse = document.getElementById('tab-btn-warehouse');
+        const btnWorkshop = document.getElementById('tab-btn-workshop');
+        const btnStorage = document.getElementById('tab-btn-storage');
+
+        // Reset
+        viewWarehouse.classList.add('hidden'); viewWarehouse.classList.remove('block');
+        viewWorkshop.classList.add('hidden'); viewWorkshop.classList.remove('flex');
+        if(viewStorage) { viewStorage.classList.add('hidden'); viewStorage.classList.remove('flex'); }
+
+        btnWarehouse.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap";
+        btnWorkshop.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap";
+        if(btnStorage) btnStorage.className = "pb-2 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors whitespace-nowrap";
+
+        if (tab === 'warehouse') {
+            viewWarehouse.classList.remove('hidden'); viewWarehouse.classList.add('block');
+            btnWarehouse.className = "pb-2 text-sm font-bold border-b-2 border-indigo-500 text-indigo-600 transition-colors whitespace-nowrap";
+        } else if (tab === 'workshop') {
+            viewWorkshop.classList.remove('hidden'); viewWorkshop.classList.add('flex');
+            btnWorkshop.className = "pb-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600 transition-colors whitespace-nowrap";
+        } else if (tab === 'storage') {
+            viewStorage.classList.remove('hidden'); viewStorage.classList.add('flex');
+            btnStorage.className = "pb-2 text-sm font-bold border-b-2 border-teal-500 text-teal-600 transition-colors whitespace-nowrap";
+            renderStorageGrid(); 
+        }
+    }
+
+    // --- LOGIKA ACTUAL STORAGE ---
+    let currentStorageData = [];
+    let currentStorageLoc = '';
+
+    function searchGlobalPart() {
+        const input = document.getElementById('globalPartSearch').value.toLowerCase().trim();
+        const resultsContainer = document.getElementById('globalPartSearchResults');
+        
+        if (input.length < 2) {
+            resultsContainer.classList.add('hidden');
+            return;
+        }
+
+        const tokens = input.split(/\s+/);
+        
+        // Pencarian canggih (kemungkinan kata yang mirip)
+        let results = masterSpareparts.map(part => {
+            const name = (part.name || '').toLowerCase();
+            const id = (part.id_part || '').toLowerCase();
+            const spec = (part.item_short_text || '').toLowerCase();
+            
+            let score = 0;
+            let allTokensMatch = true;
+            
+            tokens.forEach(token => {
+                // Beri bobot jika token cocok di nama, id, atau spek (fuzzy/kata terdekat)
+                if (name.includes(token) || id.includes(token) || spec.includes(token)) {
+                    score += 10;
+                } else {
+                    allTokensMatch = false;
+                }
+            });
+            
+            return { part, score, allTokensMatch };
+        });
+
+        // Filter yang match semua atau setidaknya ada bobot kemiripan
+        results = results.filter(r => r.allTokensMatch || r.score > 0)
+                         .sort((a, b) => b.score - a.score)
+                         .map(r => r.part)
+                         .slice(0, 15);
+
+        if (results.length > 0) {
+            resultsContainer.innerHTML = results.map(p => `
+                <div class="p-3 border-b border-gray-100 hover:bg-teal-50 cursor-pointer flex justify-between items-center transition-colors" onclick="viewActualStorageDetails('${p.storage && p.storage.trim() !== '' ? p.storage.replace(/'/g, "\\'") : '-'}')">
+                    <div>
+                        <div class="font-bold text-gray-800">${p.name}</div>
+                        <div class="text-xs text-gray-500">ID: ${p.id_part}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-500 mb-1">Posisi Rak</div>
+                        <span class="px-2 py-1 bg-teal-100 text-teal-800 text-xs font-bold rounded">${p.storage || '-'}</span>
+                    </div>
+                </div>
+            `).join('');
+            resultsContainer.classList.remove('hidden');
+        } else {
+            resultsContainer.innerHTML = '<div class="p-4 text-sm text-gray-500 italic text-center">Sparepart tidak ditemukan...</div>';
+            resultsContainer.classList.remove('hidden');
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        const searchInput = document.getElementById('globalPartSearch');
+        const searchResults = document.getElementById('globalPartSearchResults');
+        if (searchInput && searchResults) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.add('hidden');
+            }
+        }
+    });
+
+    function getLatestHistory(id_part) {
+        const history = pickupHistory.filter(h => h.id_part === id_part);
+        if (history.length === 0) return { date: '-', user: '-' };
+        
+        history.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const latest = history[0];
+        
+        const d = new Date(latest.created_at);
+        const formattedDate = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : latest.created_at;
+        
+        return {
+            date: formattedDate || '-',
+            user: latest.technician || '-'
+        };
+    }
+
+    function renderStorageGrid() {
+        const grid = document.getElementById('storage-grid');
+        if(!grid) return;
+        
+        let storageMap = {};
+        masterSpareparts.forEach(part => {
+            let loc = part.storage && part.storage.trim() !== '' ? part.storage : '-';
+            if(!storageMap[loc]) storageMap[loc] = 0;
+            storageMap[loc]++;
+        });
+
+        let sortedLocations = Object.keys(storageMap).sort((a, b) => {
+            if (a === '-') return -1;
+            if (b === '-') return 1;
+            return a.localeCompare(b);
+        });
+
+        grid.innerHTML = '';
+        if(sortedLocations.length === 0) {
+            grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400 italic">Belum ada data storage / rak.</div>`;
+            return;
+        }
+
+        sortedLocations.forEach(loc => {
+            let itemCount = storageMap[loc];
+            grid.innerHTML += `
+                <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center relative cursor-pointer" onclick="viewActualStorageDetails('${loc.replace(/'/g, "\\'")}')">
+                    <div class="w-14 h-14 bg-teal-50 border border-teal-100 rounded-full flex items-center justify-center mb-4">
+                        <i class='bx bx-cabinet text-2xl text-teal-500'></i>
+                    </div>
+                    <h3 class="font-black text-gray-800 text-lg mb-1 text-center truncate w-full" title="${loc}">${loc}</h3>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${itemCount} ITEM TYPES</p>
+                </div>
+            `;
+        });
+    }
+
+    function viewActualStorageDetails(locName) {
+        currentStorageLoc = locName;
+        document.getElementById('actual-storage-title').innerText = locName;
+        document.getElementById('searchActualStorageInput').value = '';
+        document.getElementById('filterDateStorage').value = '';
+        document.getElementById('filterMonthStorage').value = '';
+
+        const partsInRack = masterSpareparts.filter(p => {
+            let pLoc = p.storage && p.storage.trim() !== '' ? p.storage : '-';
+            return pLoc === locName;
+        });
+
+        currentStorageData = partsInRack.map(p => {
+            const hist = getLatestHistory(p.id_part);
+            return { ...p, last_modified: hist.date, modified_by: hist.user };
+        });
+
+        renderActualStorageTable(currentStorageData);
+
+        const modal = document.getElementById('actualStorageModal');
+        const box = document.getElementById('actual-storage-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function renderActualStorageTable(data) {
+        const tbody = document.getElementById('actual-storage-tbody');
+        tbody.innerHTML = '';
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center p-6 text-gray-500 italic">Data sparepart tidak ditemukan</td></tr>`;
+            return;
+        }
+        data.forEach(part => {
+            tbody.innerHTML += `
+                <tr class="hover:bg-teal-50 transition-colors border-b border-gray-100">
+                    <td class="p-3 font-mono font-bold text-teal-600">${part.id_part}</td>
+                    <td class="p-3 font-medium text-gray-700">${part.name}</td>
+                    <td class="p-3 text-gray-500 hidden md:table-cell">${part.supplier_name || '-'}</td>
+                    <td class="p-3 text-center font-bold">${part.stock}</td>
+                    <td class="p-3 text-center text-gray-600">${part.last_modified}</td>
+                    <td class="p-3 text-center text-gray-600 font-semibold">${part.modified_by}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function filterActualStorageTable() {
+        const keyword = document.getElementById('searchActualStorageInput').value.toLowerCase();
+        const dateFilter = document.getElementById('filterDateStorage').value; 
+        const monthFilter = document.getElementById('filterMonthStorage').value; 
+
+        const filtered = currentStorageData.filter(p => {
+            const matchKeyword = (p.id_part && p.id_part.toLowerCase().includes(keyword)) || 
+                                 (p.name && p.name.toLowerCase().includes(keyword)) || 
+                                 (p.supplier_name && p.supplier_name.toLowerCase().includes(keyword));
+            
+            let matchDate = true;
+            if (dateFilter) {
+                matchDate = p.last_modified && p.last_modified.startsWith(dateFilter);
+            } else if (monthFilter) {
+                matchDate = p.last_modified && p.last_modified.startsWith(monthFilter);
+            }
+
+            return matchKeyword && matchDate;
+        });
+
+        renderActualStorageTable(filtered);
+    }
+
+    function closeActualStorageModal() {
+        const modal = document.getElementById('actualStorageModal');
+        const box = document.getElementById('actual-storage-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function downloadExcelStorage() {
+        const table = document.getElementById("actual-storage-table");
+        const wb = XLSX.utils.table_to_book(table, {sheet: "Actual Storage"});
+        XLSX.writeFile(wb, `Data_Rak_${currentStorageLoc}.xlsx`);
+    }
+
+    // --- LOGIKA MODAL PENCARIAN ID PART ---
+    let currentPartIndex = 0;
+
+    function openPartModal(index = 0) {
+        currentPartIndex = index;
+        renderPartTable(masterSpareparts);
+        const modal = document.getElementById('partModal');
+        const box = document.getElementById('part-modal-box');
+        modal.classList.remove('hidden');
+        document.getElementById('searchPartInput').value = '';
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closePartModal() {
+        const modal = document.getElementById('partModal');
+        const box = document.getElementById('part-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function renderPartTable(data) {
+        const tbody = document.getElementById('part-table-body');
+        tbody.innerHTML = '';
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-500 italic">Data sparepart tidak ditemukan</td></tr>`;
+            return;
+        }
+        data.forEach(part => {
+            tbody.innerHTML += `
+                <tr class="hover:bg-indigo-50 transition-colors border-b border-gray-100">
+                    <td class="p-3 font-mono font-bold text-indigo-600">${part.id_part}</td>
+                    <td class="p-3 font-medium text-gray-700">${part.name}</td>
+                    <td class="p-3 text-gray-500 hidden md:table-cell">${part.supplier_name || '-'}</td>
+                    <td class="p-3 text-center font-bold">${part.stock}</td>
+                    <td class="p-3 text-center">
+                        <button type="button" onclick="selectPart('${part.id_part}')" class="px-4 py-1.5 bg-indigo-500 text-white rounded shadow-sm text-xs font-bold hover:bg-indigo-600">Pilih</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function filterPartTable() {
+        const keyword = document.getElementById('searchPartInput').value.toLowerCase();
+        const filtered = masterSpareparts.filter(p => 
+            (p.id_part && p.id_part.toLowerCase().includes(keyword)) || 
+            (p.name && p.name.toLowerCase().includes(keyword)) || 
+            (p.supplier_name && p.supplier_name.toLowerCase().includes(keyword))
+        );
+        renderPartTable(filtered);
+    }
+
+    function selectPart(id) {
+        document.getElementById(`in_id_part_${currentPartIndex}`).value = id;
+        autoFillData(currentPartIndex);
+        closePartModal();
+    }
+
+    // --- LOGIKA SCANNER KAMERA (Warehouse & Workshop) ---
+    let activeCameraScanner = null;
+
+    function startCameraScanner(mode, rowIndex = null) {
+        document.getElementById('scannerModal').classList.remove('hidden');
+        document.getElementById('scannerModal').classList.add('flex');
+        
+        if (!activeCameraScanner) {
+            activeCameraScanner = new Html5Qrcode("reader-workshop");
+        }
+        
+        activeCameraScanner.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                stopCameraScanner();
+                if (mode === 'warehouse') {
+                    const idx = rowIndex !== null ? rowIndex : 0;
+                    document.getElementById(`in_id_part_${idx}`).value = decodedText;
+                    autoFillData(idx);
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Barcode Terbaca!', showConfirmButton: false, timer: 1500 });
+                } 
+                else if (mode === 'workshop-row' && rowIndex !== null) {
+                    const inputEl = document.getElementById(`storage-input-${rowIndex}`);
+                    if (inputEl) {
+                        inputEl.value = decodedText;
+                        updateStorageLocation(rowIndex, decodedText);
+                    }
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Lokasi Rak Terbaca!', showConfirmButton: false, timer: 1500 });
+                }
+            },
+            (errorMessage) => { /* abaikan error */ }
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+            stopCameraScanner();
+        });
+    }
+
+    function stopCameraScanner() {
+        if (activeCameraScanner && activeCameraScanner.isScanning) {
+            activeCameraScanner.stop().catch(err => console.error(err));
+        }
+        document.getElementById('scannerModal').classList.add('hidden');
+        document.getElementById('scannerModal').classList.remove('flex');
+    }
+
+    function searchStagingBarcode() {
+        const scanValue = document.getElementById('manual_barcode_scan').value.trim().toLowerCase();
+        if(!scanValue) return;
+
+        const index = stagingWorkshop.findIndex(i => i.id_part.toLowerCase() === scanValue);
+        if (index > -1) {
+            const row = document.getElementById(`row-${index}`);
+            row.classList.add('bg-orange-100');
+            setTimeout(() => row.classList.remove('bg-orange-100'), 2000);
+            
+            const inputRak = row.querySelector('input[type="text"]');
+            if (inputRak) inputRak.focus();
+            
+            document.getElementById('manual_barcode_scan').value = '';
+        } else {
+            Swal.fire('Warning', `Part ID "${scanValue}" tidak ada di daftar Arrival Workshop. Input di Warehouse terlebih dahulu.`, 'warning');
+        }
+    }
+
+    async function submitSingleToDatabaseMaster(index) {
+        const item = stagingWorkshop[index];
+        if (!item) return;
+
+        if (!item.storage || item.storage.trim() === '') {
+            Swal.fire('Validasi Gagal', `Lokasi Rak untuk part ${item.id_part} belum diisi!`, 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Menyimpan Data...',
+            text: `Memproses part ${item.id_part} ke Database Master`,
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            // 1. Simpan Master Data
+            const payloadMaster = {
+                id: item.db_id,
+                id_part: item.id_part,
+                name: item.name,
+                spec: item.item_short_text,
+                stock: item.qty_sebelum,
+                unit: item.unit,
+                min_stock: item.min_stock,
+                storage: item.storage,
+                supplier_name: item.supplier_name,
+                material_name: item.name,
+                item_short_text: item.item_short_text,
+                purchase_unit: item.unit,
+                price_per_unit: item.price_per_unit
+            };
+
+            const resMaster = await fetch('/api/spareparts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payloadMaster)
+            });
+
+            if (!resMaster.ok) {
+                const textRes = await resMaster.text();
+                let errMsg = `Gagal menyimpan master data part ${item.id_part}`;
+                try { const jsonRes = JSON.parse(textRes); errMsg = jsonRes.error || errMsg; } catch(e) {}
+                throw new Error(errMsg);
+            }
+
+            // 2. Log Kedatangan (tambah stok)
+            const payloadLog = {
+                id_part: item.id_part,
+                qty: -(item.qty_kedatangan),
+                work_order: 'Arrival Restock',
+                technician: currentUser
+            };
+
+            const resLog = await fetch('/api/pickup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payloadLog)
+            });
+
+            if (!resLog.ok) {
+                const textResLog = await resLog.text();
+                let errLogMsg = `Gagal mencatat log part ${item.id_part}`;
+                try { const jsonResLog = JSON.parse(textResLog); errLogMsg = jsonResLog.error || errLogMsg; } catch(e) {}
+                throw new Error(errLogMsg);
+            }
+
+            // 3. Hapus dari database Staging
+            await fetch(`/api/staging/${item.id}`, { method: 'DELETE' });
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Disimpan!',
+                text: `Data part ${item.id_part} berhasil dipindahkan ke Database Master.`,
+                confirmButtonColor: '#4f46e5'
+            }).then(() => {
+                fetchData(); // Refresh ulang data tabel antrean
+            });
+
+        } catch (err) {
+            Swal.fire('Gagal', err.message || 'Terjadi kesalahan koneksi ke server backend.', 'error');
+        }
+    }
+    // --- LOGIKA MODAL PENCARIAN STORAGE LOCATION ---
+    let uniqueLocations = [];
+    let currentLocationIndex = null;
+
+    function populateLocationsList() {
+        let locSet = new Set();
+        masterSpareparts.forEach(part => {
+            if (part.storage) {
+                locSet.add(part.storage);
+            }
+        });
+        uniqueLocations = Array.from(locSet).sort();
+    }
+
+    function openLocationModal(index) {
+        currentLocationIndex = index;
+        if (uniqueLocations.length === 0) populateLocationsList();
+        
+        renderLocationList(uniqueLocations);
+        
+        const modal = document.getElementById('locationModal');
+        const box = document.getElementById('location-modal-box');
+        modal.classList.remove('hidden');
+        document.getElementById('searchLocationInput').value = '';
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeLocationModal() {
+        const modal = document.getElementById('locationModal');
+        const box = document.getElementById('location-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        currentLocationIndex = null;
+    }
+
+    function renderLocationList(data) {
+        const listEl = document.getElementById('location-list');
+        listEl.innerHTML = '';
+        
+        if (data.length === 0) {
+            listEl.innerHTML = `<li class="p-4 text-center text-gray-500 italic text-sm">Data lokasi belum tersedia</li>`;
+            return;
+        }
+
+        data.forEach(loc => {
+            listEl.innerHTML += `
+                <li>
+                    <button type="button" onclick="selectLocation('${loc}')" class="w-full text-left px-6 py-3 hover:bg-orange-50 transition-colors flex items-center font-medium text-gray-700">
+                        <i class='bx bx-server text-orange-400 mr-3 text-lg'></i> ${loc}
+                    </button>
+                </li>
+            `;
+        });
+    }
+
+    function filterLocationList() {
+        const keyword = document.getElementById('searchLocationInput').value.toLowerCase();
+        const filtered = uniqueLocations.filter(loc => loc.toLowerCase().includes(keyword));
+        renderLocationList(filtered);
+    }
+
+    function selectLocation(loc) {
+        if (currentLocationIndex !== null) {
+            const inputEl = document.getElementById(`storage-input-${currentLocationIndex}`);
+            if (inputEl) {
+                inputEl.value = loc;
+                updateStorageLocation(currentLocationIndex, loc);
+            }
+        }
+        closeLocationModal();
+    }
+
+</script>
+<script src="gtranslate.js"></script>
+<script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

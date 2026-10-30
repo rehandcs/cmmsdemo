@@ -1,0 +1,748 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset History - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+    #sidebar { transition: width 0.3s ease; }
+    
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden">
+
+<aside id="sidebar" class="w-60 h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0 fixed md:relative inset-y-0 left-0 z-50 transform translate-x-0 transition-transform duration-300">
+  <div class="h-14 flex items-center px-4 border-b border-gray-200 bg-white header-sidebar justify-between md:justify-start">
+    <div class="flex items-center">
+      <i onclick="toggleSidebar()" class='bx bx-menu text-2xl text-gray-800 hover:text-orange-500 cursor-pointer transition-colors mr-3 hidden md:block'></i>
+    </div>
+    <!-- Tombol Tutup (Hanya tampil di Mobile) -->
+    <i onclick="toggleSidebar()" class='bx bx-x text-2xl text-gray-800 hover:text-red-500 cursor-pointer md:hidden'></i>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2 text-sm min-h-0" id="sidebar-nav">
+    <!-- Copass semua menu navigasi Anda di sini -->
+    <a href="Index.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200">
+      <i class='bx bx-home text-xl mr-3'></i> <span class="sidebar-text">Home</span>
+    </a>
+    <a href="Schedule.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-calendar text-xl mr-3'></i> <span class="sidebar-text">Schedule</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workorder', this)">
+        <div class="flex items-center"><i class='bx bx-book text-xl mr-3'></i> <span class="sidebar-text">Work Order</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workorder" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="WorkOrder.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-desktop text-lg mr-3'></i> <span class="sidebar-text">Live Dashboard</span>
+        </a>
+        <a href="TicketWO.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-task text-lg mr-3'></i> <span class="sidebar-text">Ticket Order</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-maintenance', this)">
+        <div class="flex items-center"><i class='bx bx-wrench text-xl mr-3'></i> <span class="sidebar-text">Maintenance</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+        <div id="submenu-maintenance" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+          <a href="Preventive.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-calendar-check text-lg mr-3'></i> <span class="sidebar-text">Preventive</span>
+          </a>
+          <a href="Corrective.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-error-circle text-lg mr-3'></i> <span class="sidebar-text">Corrective</span>
+          </a>
+        </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workshop', this)">
+        <div class="flex items-center"><i class='bx bx-building text-xl mr-3'></i> <span class="sidebar-text">Supply and Placement</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workshop" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="Pickup.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cog text-lg mr-3'></i> <span class="sidebar-text">Pick Up Sparepart</span>
+        </a>
+        <a href="SparepartArrival.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-archive text-lg mr-3'></i> <span class="sidebar-text">Sparepart Arrival</span>
+        </a>
+        <a href="AssetPlacement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cube text-lg mr-3'></i> <span class="sidebar-text">Asset Placement</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- PERBAIKAN: Penulisan class diperbaiki -->
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-inventory', this)">
+        <div class="flex items-center"><i class='bx bx-package text-xl mr-3'></i> <span class="sidebar-text">Inventory</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-inventory" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="UsageLog.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-history text-lg mr-3'></i> <span class="sidebar-text">Sparepart Management</span>
+        </a>
+        <a href="AssetManagement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-spreadsheet text-lg mr-3'></i> <span class="sidebar-text">Asset Management</span>
+        </a>
+        <a href="DatabaseMaster.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-data text-lg mr-3'></i> <span class="sidebar-text">Master Database</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="mechanic.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-refresh text-lg mr-3'></i> <span class="sidebar-text">Mechanic</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-reports', this)">
+        <div class="flex items-center"><i class='bx bx-pie-chart-alt-2 text-xl mr-3'></i> <span class="sidebar-text">Reports Analysis</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-reports" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="TrackingAssets.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-radar text-lg mr-3'></i> <span class="sidebar-text">Asset History</span>
+        </a>
+        <a href="mttrmtbdanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-bar-chart text-lg mr-3'></i> <span class="sidebar-text">MTTR and MTBF Analysis</span>
+        </a>
+        <a href="TrackingSpareparts.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-folder text-lg mr-3'></i> <span class="sidebar-text">Spareparts Usage</span>
+        </a>
+        <a href="costanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-pie-chart-alt text-lg mr-3'></i> <span class="sidebar-text">Cost Analysis</span>
+        </a>
+        <a href="mechanicperformance.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-line-chart text-lg mr-3'></i> <span class="sidebar-text">Mechanic Analysis</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="UserSettings.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-user text-xl mr-3'></i> <span class="sidebar-text">User Settings</span>
+    </a>
+    
+    <!-- (Lanjutkan paste semua menu submenu-workorder, submenu-maintenance, dst di sini sesuai kode asli Anda) -->
+    
+  </nav>
+</aside>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-end items-center px-6 shrink-0 z-10 shadow-sm">
+    <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+    <main class="flex-1 overflow-y-auto p-8 bg-gray-50 flex flex-col">
+      <div class="flex justify-between items-end border-b border-gray-200 pb-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Asset History Report</h1>
+          <p class="text-sm text-gray-500 mt-1">Monitor detailed machine maintenance records and activity logs.</p>
+        </div>
+      </div>
+
+      <div onclick="openFilterModal()" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex items-center cursor-pointer hover:shadow-md hover:border-orange-300 transition-all mb-8 relative group w-full">
+        <div class="bg-gray-100 p-4 rounded-xl mr-6 border border-gray-200 flex-shrink-0">
+            <i class='bx bx-chip text-5xl text-gray-600'></i>
+        </div>
+        <div class="flex-1" id="top-card-info">
+            <div class="flex justify-between items-start w-full pr-16">
+                <span class="text-xs font-bold px-2 py-1 bg-green-100 text-green-700 rounded uppercase tracking-wider mb-2 inline-block">All Assets</span>
+                <span class="text-xs font-mono text-gray-400 mt-1">ID: MULTIPLE</span>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">All Machines</h2>
+            <p class="text-sm text-gray-500 mt-1"><i class='bx bx-map-pin mr-1'></i> Showing activity for all locations</p>
+        </div>
+        <div class="absolute right-6 flex flex-col items-center justify-center text-gray-300 group-hover:text-orange-500 transition-colors">
+            <i class='bx bx-filter-alt text-3xl'></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider mt-1">Filter</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex-1">
+          <h3 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+              <i class='bx bx-history text-orange-500 mr-2 text-xl'></i> Activity & Maintenance History
+          </h3>
+
+          <div class="relative border-l-2 border-gray-200 ml-3 pl-6 space-y-8" id="timeline-container">
+             <!-- Timeline di render melalui JS -->
+          </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="filterModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-[400px] overflow-hidden transform transition-all scale-95" id="filter-modal-box">
+        <div class="bg-gray-800 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold text-lg flex items-center"><i class='bx bx-filter-alt mr-2'></i> Filter by Machine</h3>
+            <button onclick="closeFilterModal()" class="text-gray-400 hover:text-red-400 transition-colors">
+                <i class='bx bx-x text-3xl'></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <div class="mb-4 pb-4 border-b border-gray-100">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Filter by Date Range</label>
+                <div class="flex gap-2">
+                    <input type="date" id="filterStartDate" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500" title="Start Date">
+                    <input type="date" id="filterEndDate" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500" title="End Date">
+                </div>
+            </div>
+            <div class="mb-4 pb-4 border-b border-gray-100 grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Filter by Area (Cutting)</label>
+                    <select id="filterArea" onchange="filterMachineList()" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500">
+                        <option value="">All Areas</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Filter by Location (Line)</label>
+                    <select id="filterLocation" onchange="filterMachineList()" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500">
+                        <option value="">All Locations</option>
+                    </select>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mb-4 font-medium">Select machines to show history for:</p>
+            <div class="space-y-4 max-h-64 overflow-y-auto" id="filter-checkboxes">
+                </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+            <button onclick="closeFilterModal()" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition-colors">Cancel</button>
+            <button onclick="applyFilter()" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-lg shadow-sm transition-colors">Apply Filter</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="historyDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
+    <div class="bg-white rounded-xl shadow-2xl w-[450px] overflow-hidden transform transition-all scale-95" id="history-detail-modal-box">
+        <div class="bg-gray-800 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-bold text-lg flex items-center"><i class='bx bx-info-circle mr-2'></i> Maintenance Details</h3>
+            <button onclick="closeHistoryDetail()" class="text-gray-400 hover:text-red-400 transition-colors">
+                <i class='bx bx-x text-3xl'></i>
+            </button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Repaired By (Technician)</label>
+                <p id="detailTech" class="text-sm font-semibold text-gray-800 bg-gray-50 p-2.5 rounded border border-gray-200 flex items-center"><i class='bx bx-user-circle mr-2 text-gray-400 text-lg'></i> <span></span></p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Repair Time / Duration</label>
+                <p id="detailTime" class="text-sm font-semibold text-gray-800 bg-gray-50 p-2.5 rounded border border-gray-200 flex items-center"><i class='bx bx-time mr-2 text-gray-400 text-lg'></i> <span></span></p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Downtime</label>
+                <p id="detailDowntime" class="text-sm font-semibold text-gray-800 bg-gray-50 p-2.5 rounded border border-gray-200 flex items-center"><i class='bx bx-timer mr-2 text-red-500 text-lg'></i> <span class="text-red-600 font-bold"></span></p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Spare Parts Used</label>
+                <ul id="detailParts" class="text-sm font-semibold text-gray-800 bg-gray-50 p-2.5 rounded border border-gray-200 list-disc list-inside">
+                </ul>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+            <button onclick="closeHistoryDetail()" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition-colors">Close</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    let allLogs = [];
+    let assetsData = [];
+
+    // --- Sidebar Logics ---
+
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) {
+          sidebar.classList.remove('sidebar-collapsed');
+      }
+      
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // --- Fetch Data Logics ---
+    async function fetchHistoryData() {
+        try {
+            const [assetRes, corrRes, prevRes, woRes, spLogRes] = await Promise.all([
+                fetch('/api/assets'),
+                fetch('/api/completion/corrective').catch(() => ({ ok: false })),
+                fetch('/api/completion/preventive').catch(() => ({ ok: false })),
+                fetch('/api/workorders'),
+                fetch('/api/sparepart-logs').catch(() => ({ ok: false }))
+            ]);
+
+            if(assetRes.ok) assetsData = await assetRes.json();
+            
+            let corrData = [];
+            if(corrRes && corrRes.ok) try { corrData = await corrRes.json(); } catch(e) {}
+            
+            let prevData = [];
+            if(prevRes && prevRes.ok) try { prevData = await prevRes.json(); } catch(e) {}
+
+            let woData = [];
+            if(woRes.ok) woData = await woRes.json();
+
+            let spLogs = [];
+            if(spLogRes && spLogRes.ok) try { spLogs = await spLogRes.json(); } catch(e) {}
+
+            let completionLogs = [
+                ...corrData.map(item => ({...item, log_type: 'CORRECTIVE'})),
+                ...prevData.map(item => ({...item, log_type: 'PREVENTIVE'}))
+            ];
+
+            if (completionLogs.length > 0) {
+                allLogs = completionLogs.map(log => {
+                    const wo = woData.find(w => ('WO-' + w.id === log.work_order_id || w.wo_id === log.work_order_id)) || {};
+                    return {
+                        ...log,
+                        start_time: wo.start_time,
+                        end_time: wo.end_time,
+                        downtime: wo.total_downtontime_minute,
+                        datetime: log.datetime || log.completion_date,
+                        work_order_id: log.work_order_id
+                    };
+                });
+            } else {
+                allLogs = woData
+                    .filter(item => item.status === 'CLOSED')
+                    .map(item => ({
+                        ...item,
+                        log_type: item.type,
+                        datetime: item.end_time || item.request_time,
+                        solution_desc: item.issue_desc,
+                        technician: item.technician,
+                        asset_name: item.machine_name,
+                        work_order_id: item.wo_id || ('WO-' + item.id),
+                        downtime: item.total_downtontime_minute
+                    }));
+            }
+
+            // Assign spare parts
+            allLogs.forEach(log => {
+                const relatedLogs = spLogs.filter(spl => spl.work_order === log.work_order_id);
+                log.spareparts = relatedLogs;
+            });
+
+            // Menambahkan log history dari perpindahan aset (Asset Placement)
+            const placementLogs = assetsData
+                .filter(a => a.move_date && a.before_location)
+                .map(a => ({
+                    log_type: 'PLACEMENT',
+                    asset_id: a.nomor_asset || a.machine_id,
+                    asset_name: a.machine_name,
+                    datetime: a.move_date + 'T08:00:00', // Waktu default pagi hari
+                    solution_desc: `Dipindahkan dari ${a.before_location} ke ${a.area ? a.area + ' ' : ''}${a.location}`,
+                    technician: 'System / PIC Placement',
+                    downtime: 0,
+                    work_order_id: '-',
+                    spareparts: []
+                }));
+                
+            // Gabungkan semua Log (Maintenance & Placement)
+            allLogs = [...allLogs, ...placementLogs];
+
+            // Urutkan dari yang terbaru
+            allLogs.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+            populateFilterModal();
+            
+            // Cek URL params jika datang dari halaman lain
+            const urlParams = new URLSearchParams(window.location.search);
+            const passedAssetId = urlParams.get('asset_id');
+            if(passedAssetId) {
+                // Uncheck semua kecuali yang dipilih
+                document.querySelectorAll('.filter-cb').forEach(cb => {
+                    cb.checked = (cb.value === passedAssetId);
+                });
+            }
+
+            applyFilter();
+        } catch (err) {
+            console.error("Gagal mengambil data history:", err);
+        }
+    }
+
+    function populateFilterModal() {
+        const locationSet = new Set();
+        const areaSet = new Set();
+        assetsData.forEach(asset => { 
+            if(asset.location) locationSet.add(asset.location); 
+            if(asset.area) areaSet.add(asset.area);
+        });
+        
+        const filterArea = document.getElementById('filterArea');
+        if(filterArea) {
+            filterArea.innerHTML = '<option value="">All Areas</option>';
+            areaSet.forEach(area => { filterArea.innerHTML += `<option value="${area}">${area}</option>`; });
+        }
+
+        const filterLocation = document.getElementById('filterLocation');
+        if(filterLocation) {
+            filterLocation.innerHTML = '<option value="">All Locations</option>';
+            locationSet.forEach(loc => { filterLocation.innerHTML += `<option value="${loc}">${loc}</option>`; });
+        }
+        
+        const filterContainer = document.getElementById('filter-checkboxes');
+        let html = `
+            <input type="text" id="filterSearch" onkeyup="filterMachineList()" placeholder="Cari nama mesin..." class="w-full px-3 py-2 border border-gray-300 rounded mb-2 text-sm">
+            <label class="flex items-center space-x-3 cursor-pointer group">
+                <input type="checkbox" class="filter-cb w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500" value="all" checked id="cb-all">
+                <span class="text-base text-gray-800 font-bold group-hover:text-orange-600 transition-colors">Select All Machines</span>
+            </label>
+            <hr class="border-gray-100">
+            <div id="machine-items">
+        `;
+
+        assetsData.forEach(asset => {
+            html += `
+            <label class="flex items-center space-x-3 cursor-pointer group machine-item" data-name="${asset.machine_name.toLowerCase()}" data-location="${asset.location || ''}" data-area="${asset.area || ''}">
+                <input type="checkbox" class="filter-cb w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500" value="${asset.nomor_asset}" checked>
+                <span class="text-base text-gray-700 font-medium group-hover:text-orange-600 transition-colors">${asset.machine_name} (${asset.nomor_asset})</span>
+            </label>
+            `;
+        });
+        html += `</div>`;
+        filterContainer.innerHTML = html;
+        attachFilterEvents();
+    }
+
+    function filterMachineList() {
+        const query = document.getElementById('filterSearch').value.toLowerCase();
+        const filterLocation = document.getElementById('filterLocation').value;
+        const filterArea = document.getElementById('filterArea').value;
+        document.querySelectorAll('.machine-item').forEach(el => {
+            const matchQuery = el.getAttribute('data-name').includes(query);
+            const matchLocation = filterLocation === "" || el.getAttribute('data-location') === filterLocation;
+            const matchArea = filterArea === "" || el.getAttribute('data-area') === filterArea;
+            el.style.display = (matchQuery && matchLocation && matchArea) ? 'flex' : 'none';
+        });
+    }
+
+    function attachFilterEvents() {
+        const checkboxes = document.querySelectorAll('.filter-cb:not([value="all"])');
+        const allCheckbox = document.querySelector('.filter-cb[value="all"]');
+
+        allCheckbox.addEventListener('change', (e) => {
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                const allChecked = Array.from(checkboxes).every(c => c.checked);
+                allCheckbox.checked = allChecked;
+            });
+        });
+    }
+
+    // --- Filter Logics ---
+    function openFilterModal() {
+        const modal = document.getElementById('filterModal');
+        const box = document.getElementById('filter-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeFilterModal() {
+        const modal = document.getElementById('filterModal');
+        const box = document.getElementById('filter-modal-box');
+        box.classList.remove('scale-100');
+        box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function applyFilter() {
+        const checkboxes = document.querySelectorAll('.filter-cb:not([value="all"])');
+        let selectedAssetIds = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) selectedAssetIds.push(cb.value);
+        });
+
+        const allCheckbox = document.querySelector('.filter-cb[value="all"]');
+        if(allCheckbox.checked) {
+            selectedAssetIds = ['all'];
+        }
+
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+        const filterLocation = document.getElementById('filterLocation').value;
+        const filterArea = document.getElementById('filterArea').value;
+
+        updateTopCard(selectedAssetIds, startDate, endDate, filterLocation, filterArea);
+        renderTimeline(selectedAssetIds, startDate, endDate, filterLocation, filterArea);
+        closeFilterModal();
+    }
+
+    function updateTopCard(selectedAssetIds, startDate, endDate, filterLocation, filterArea) {
+        const topCard = document.getElementById('top-card-info');
+        let dateHtml = '';
+        if(startDate || endDate) {
+            dateHtml = `<p class="text-sm text-orange-600 font-bold mt-1"><i class='bx bx-calendar mr-1'></i> Date: ${startDate || 'Any'} to ${endDate || 'Any'}</p>`;
+        }
+        if(filterArea) {
+            dateHtml += `<p class="text-sm text-blue-600 font-bold mt-1"><i class='bx bx-layer mr-1'></i> Area: ${filterArea}</p>`;
+        }
+        if(filterLocation) {
+            dateHtml += `<p class="text-sm text-blue-600 font-bold mt-1"><i class='bx bx-map mr-1'></i> Location: ${filterLocation}</p>`;
+        }
+        
+        if(selectedAssetIds.includes('all') || selectedAssetIds.length > 1) {
+            topCard.innerHTML = `
+                <div class="flex justify-between items-start w-full pr-16">
+                    <span class="text-xs font-bold px-2 py-1 bg-green-100 text-green-700 rounded uppercase tracking-wider mb-2 inline-block">All Selected Assets</span>
+                    <span class="text-xs font-mono text-gray-400 mt-1">ID: MULTIPLE</span>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">Multiple Machines</h2>
+                <p class="text-sm text-gray-500 mt-1"><i class='bx bx-map-pin mr-1'></i> Showing activity for multiple locations</p>
+                ${dateHtml}
+            `;
+        } else if (selectedAssetIds.length === 1 && selectedAssetIds[0] !== 'all') {
+            const asset = assetsData.find(a => a.nomor_asset === selectedAssetIds[0]);
+            if(asset) {
+                topCard.innerHTML = `
+                    <div class="flex justify-between items-start w-full pr-16">
+                        <span class="text-xs font-bold px-2 py-1 bg-green-100 text-green-700 rounded uppercase tracking-wider mb-2 inline-block">Asset Details</span>
+                        <span class="text-xs font-mono text-gray-400 mt-1">ID: ${asset.nomor_asset}</span>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">${asset.machine_name}</h2>
+                    <p class="text-sm text-gray-500 mt-1"><i class='bx bx-map-pin mr-1'></i> ${asset.location || 'Location Not Set'}</p>
+                    ${dateHtml}
+                `;
+            }
+        } else {
+             topCard.innerHTML = `
+                <h2 class="text-2xl font-bold text-gray-800">No Machines Selected</h2>
+                ${dateHtml}
+            `;
+        }
+    }
+
+    function renderTimeline(selectedAssetIds, startDate = null, endDate = null, filterLocation = null, filterArea = null) {
+        const container = document.getElementById('timeline-container');
+        container.innerHTML = '';
+
+        let filteredLogs = selectedAssetIds.includes('all') 
+            ? allLogs 
+            : allLogs.filter(log => selectedAssetIds.includes(log.asset_id));
+
+        if (startDate || endDate) {
+            const sDate = startDate ? new Date(startDate) : null;
+            const eDate = endDate ? new Date(endDate) : null;
+            if(eDate) eDate.setHours(23, 59, 59, 999);
+
+            filteredLogs = filteredLogs.filter(log => {
+                if (!log.datetime) return false;
+                const logDate = new Date(log.datetime);
+                let match = true;
+                if(sDate && logDate < sDate) match = false;
+                if(eDate && logDate > eDate) match = false;
+                return match;
+            });
+        }
+
+        if (filterArea) {
+            filteredLogs = filteredLogs.filter(log => {
+                const asset = assetsData.find(a => a.nomor_asset == log.asset_id);
+                return asset && asset.area === filterArea;
+            });
+        }
+
+        if (filterLocation) {
+            filteredLogs = filteredLogs.filter(log => {
+                const asset = assetsData.find(a => a.nomor_asset == log.asset_id);
+                return asset && asset.location === filterLocation;
+            });
+        }
+
+        if(filteredLogs.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 italic">Tidak ada riwayat aktivitas ditemukan.</p>';
+            return;
+        }
+
+        filteredLogs.forEach(log => {
+            let dotColor = 'bg-gray-500';
+            let titleText = 'Activity';
+            let iconClass = 'bx-info-circle';
+            let titleColor = 'text-gray-800';
+
+            // Menentukan Warna dan Ikon berdasarkan Jenis Log
+            if (log.log_type === 'CORRECTIVE') {
+                dotColor = 'bg-red-500'; titleText = 'Corrective Maintenance'; iconClass = 'bx-wrench text-red-500'; titleColor = 'text-red-700';
+            } else if (log.log_type === 'PREVENTIVE') {
+                dotColor = 'bg-blue-500'; titleText = 'Preventive Maintenance'; iconClass = 'bx-calendar-check text-blue-500'; titleColor = 'text-blue-700';
+            } else if (log.log_type === 'PLACEMENT') {
+                dotColor = 'bg-indigo-500'; titleText = 'Asset Placement / Pindah'; iconClass = 'bx-qr-scan text-indigo-500'; titleColor = 'text-indigo-700';
+            }
+            
+            // Format Tanggal
+            const dateObj = new Date(log.datetime);
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+            const dateStr = dateObj.toLocaleDateString('id-ID', dateOptions);
+            
+            // Prepare Parts String untuk Modal
+            let partsStr = 'None';
+            if (log.spareparts && log.spareparts.length > 0) {
+                partsStr = log.spareparts.map(sp => `${sp.part_name} (${sp.qty} Pcs)`).join('||');
+            } else if (log.sparepart_name) {
+                partsStr = `${log.sparepart_name} (${log.sparepart_qty} ${log.sparepart_unit})`;
+            }
+            
+            const safePartsStr = partsStr.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            
+            let downtimeVal = parseFloat(log.downtime);
+            const downtimeStr = isNaN(downtimeVal) || log.log_type === 'PLACEMENT' ? '-' : downtimeVal + ' Menit';
+
+            const assetInfo = assetsData.find(a => a.nomor_asset == log.asset_id) || {};
+            const html = `
+            <div class="timeline-item relative cursor-pointer group" onclick="openHistoryDetail('${log.technician || log.user_name || 'System'}', '${dateStr}', '${safePartsStr}', '${downtimeStr}')">
+                <span class="absolute -left-[33px] top-1 h-4 w-4 rounded-full ${dotColor} ring-4 ring-white group-hover:bg-orange-500 transition-colors"></span>
+                <div class="bg-transparent group-hover:bg-orange-50 p-3 rounded-xl transition-all border border-transparent group-hover:border-orange-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-bold text-gray-800"><i class='bx ${iconClass} mr-1'></i> ${log.asset_name || assetInfo.machine_name} - ${assetInfo.location || '-'}</h4>
+                        <span class="text-xs font-bold text-gray-400">${dateStr}</span>
+                    </div>
+                    <div class="mb-2"><span class="text-[10px] font-bold uppercase tracking-wider ${dotColor} text-white px-2 py-0.5 rounded shadow-sm">${titleText}</span></div>
+                    <p class="text-sm text-gray-700 mb-1"><strong>Oleh:</strong> ${log.technician || log.user_name || '-'}</p>
+                    <p class="text-sm text-gray-600 leading-relaxed">${log.solution_desc}</p>
+                </div>
+            </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    // --- History Detail Modal Logics ---
+    function openHistoryDetail(tech, time, partsStr, downtimeStr) {
+        document.querySelector('#detailTech span').innerText = tech;
+        document.querySelector('#detailTime span').innerText = time;
+        document.querySelector('#detailDowntime span').innerText = downtimeStr;
+
+        const partsList = document.getElementById('detailParts');
+        partsList.innerHTML = '';
+        
+        if (partsStr && partsStr !== 'None') {
+            const partsArray = partsStr.split('||');
+            partsArray.forEach(p => {
+                const li = document.createElement('li');
+                li.className = "py-0.5";
+                li.innerText = p;
+                partsList.appendChild(li);
+            });
+        } else {
+             partsList.innerHTML = '<li class="text-gray-500 italic list-none">No spare parts used</li>';
+        }
+
+        const modal = document.getElementById('historyDetailModal');
+        const box = document.getElementById('history-detail-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    function closeHistoryDetail() {
+        const modal = document.getElementById('historyDetailModal');
+        const box = document.getElementById('history-detail-modal-box');
+        box.classList.remove('scale-100');
+        box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar) sidebar.outerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split('/').pop() || 'Index.html';
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const submenu = link.closest('[id^="submenu-"]');
+          if (submenu) {
+            submenu.classList.remove('hidden');
+            submenu.classList.add('block');
+            submenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+        const userData = JSON.parse(localStorage.getItem('userData'));
+        if (userData) {
+            document.getElementById('header-user-name').innerText = userData.name;
+            document.getElementById('header-user-role').innerText = userData.role || 'User';
+            const avatarEl = document.getElementById('header-avatar');
+            document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+        }
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'TrackingAssets.html' && link.getAttribute('href') === 'TrackingAssets.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+
+      // Load API data on start
+      fetchHistoryData();
+    });
+  </script>
+  <script src="gtranslate.js"></script>
+  <script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

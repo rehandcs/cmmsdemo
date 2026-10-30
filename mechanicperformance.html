@@ -1,0 +1,400 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage Log - Can Sport</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden">
+
+<aside id="sidebar" class="w-60 h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0 fixed md:relative inset-y-0 left-0 z-50 transform translate-x-0 transition-transform duration-300">
+  <div class="h-14 flex items-center px-4 border-b border-gray-200 bg-white header-sidebar justify-between md:justify-start">
+    <div class="flex items-center">
+      <i onclick="toggleSidebar()" class='bx bx-menu text-2xl text-gray-800 hover:text-orange-500 cursor-pointer transition-colors mr-3 hidden md:block'></i>
+    </div>
+    <!-- Tombol Tutup (Hanya tampil di Mobile) -->
+    <i onclick="toggleSidebar()" class='bx bx-x text-2xl text-gray-800 hover:text-red-500 cursor-pointer md:hidden'></i>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2 text-sm min-h-0" id="sidebar-nav">
+    <!-- Copass semua menu navigasi Anda di sini -->
+    <a href="Index.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200">
+      <i class='bx bx-home text-xl mr-3'></i> <span class="sidebar-text">Home</span>
+    </a>
+    <a href="Schedule.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-calendar text-xl mr-3'></i> <span class="sidebar-text">Schedule</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workorder', this)">
+        <div class="flex items-center"><i class='bx bx-book text-xl mr-3'></i> <span class="sidebar-text">Work Order</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workorder" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="WorkOrder.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-desktop text-lg mr-3'></i> <span class="sidebar-text">Live Dashboard</span>
+        </a>
+        <a href="TicketWO.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-task text-lg mr-3'></i> <span class="sidebar-text">Ticket Order</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-maintenance', this)">
+        <div class="flex items-center"><i class='bx bx-wrench text-xl mr-3'></i> <span class="sidebar-text">Maintenance</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+        <div id="submenu-maintenance" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+          <a href="Preventive.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-calendar-check text-lg mr-3'></i> <span class="sidebar-text">Preventive</span>
+          </a>
+          <a href="Corrective.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+            <i class='bx bx-error-circle text-lg mr-3'></i> <span class="sidebar-text">Corrective</span>
+          </a>
+        </div>
+    </div>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-workshop', this)">
+        <div class="flex items-center"><i class='bx bx-building text-xl mr-3'></i> <span class="sidebar-text">Supply and Placement</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workshop" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="Pickup.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cog text-lg mr-3'></i> <span class="sidebar-text">Pick Up Sparepart</span>
+        </a>
+        <a href="SparepartArrival.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-archive text-lg mr-3'></i> <span class="sidebar-text">Sparepart Arrival</span>
+        </a>
+        <a href="AssetPlacement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cube text-lg mr-3'></i> <span class="sidebar-text">Asset Placement</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- PERBAIKAN: Penulisan class diperbaiki -->
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-inventory', this)">
+        <div class="flex items-center"><i class='bx bx-package text-xl mr-3'></i> <span class="sidebar-text">Inventory</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-inventory" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="UsageLog.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-history text-lg mr-3'></i> <span class="sidebar-text">Sparepart Management</span>
+        </a>
+        <a href="AssetManagement.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-spreadsheet text-lg mr-3'></i> <span class="sidebar-text">Asset Management</span>
+        </a>
+        <a href="DatabaseMaster.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-data text-lg mr-3'></i> <span class="sidebar-text">Master Database</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="mechanic.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-refresh text-lg mr-3'></i> <span class="sidebar-text">Mechanic</span>
+    </a>
+
+    <div class="mt-2">
+      <div class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger" onclick="toggleSubmenu('submenu-reports', this)">
+        <div class="flex items-center"><i class='bx bx-pie-chart-alt-2 text-xl mr-3'></i> <span class="sidebar-text">Reports Analysis</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-reports" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="TrackingAssets.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-radar text-lg mr-3'></i> <span class="sidebar-text">Asset History</span>
+        </a>
+        <a href="mttrmtbdanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-bar-chart text-lg mr-3'></i> <span class="sidebar-text">MTTR and MTBF Analysis</span>
+        </a>
+        <a href="TrackingSpareparts.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-folder text-lg mr-3'></i> <span class="sidebar-text">Spareparts Usage</span>
+        </a>
+        <a href="costanalysis.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-pie-chart-alt text-lg mr-3'></i> <span class="sidebar-text">Cost Analysis</span>
+        </a>
+        <a href="mechanicperformance.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-line-chart text-lg mr-3'></i> <span class="sidebar-text">Mechanic Analysis</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="UserSettings.html" class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-user text-xl mr-3'></i> <span class="sidebar-text">User Settings</span>
+    </a>
+    
+    <!-- (Lanjutkan paste semua menu submenu-workorder, submenu-maintenance, dst di sini sesuai kode asli Anda) -->
+    
+  </nav>
+</aside>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-end items-center px-6 shrink-0 z-10 shadow-sm">
+    <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+    <main class="flex-1 overflow-y-auto p-8 bg-gray-50">
+      <div class="flex justify-between items-end border-b border-gray-200 pb-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Mechanic Analysis</h1>
+          <p class="text-sm text-gray-500 mt-1">Showing mechanic performance by time period</p>
+        </div>
+      </div>
+
+      <!-- Dashboard Filter & Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-sm font-bold text-gray-500 uppercase mb-4">Filter Data</h2>
+            <select id="timeRange" onchange="fetchLeaderboard()" class="w-full p-2 border border-gray-300 rounded-lg text-sm mb-4 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all">
+                <option value="all">All Time</option>
+                <option value="30">Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+            </select>
+            <div class="bg-orange-50 p-4 rounded-lg border border-orange-100 mt-4 flex flex-col justify-center">
+                <span class="text-orange-600 text-xs font-bold uppercase tracking-wider mb-1 block">Total Mechanics</span>
+                <span id="stat-total-mech" class="text-3xl font-black text-gray-800">-</span>
+            </div>
+        </div>
+        
+        <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col items-center justify-center h-[250px]">
+                <span class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2 w-full text-left">Top 5 Assets Repaired</span>
+                <div class="relative w-full h-full">
+                    <canvas id="assetsChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col items-center justify-center h-[250px]">
+                <span class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2 w-full text-left">Top 5 Work Hours (Hrs)</span>
+                <div class="relative w-full h-full">
+                    <canvas id="hoursChart"></canvas>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table class="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                  <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
+                      <th class="px-6 py-5 font-bold text-center w-16">No</th>
+                      <th class="px-6 py-5 font-bold text-center">Profile</th>
+                      <th class="px-6 py-5 font-bold">ID</th>
+                      <th class="px-6 py-5 font-bold">Mechanic Name</th>
+                      <th class="px-6 py-5 font-bold text-center">Assets Repaired</th>
+                      <th class="px-6 py-5 font-bold text-center">Total Work Hours</th>
+                  </tr>
+              </thead>
+              <tbody id="leaderboard-tbody" class="text-sm text-gray-700 divide-y divide-gray-100">
+                  <tr><td colspan="6" class="text-center py-8 text-gray-500">Loading data...</td></tr>
+              </tbody>
+          </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleSubmenu(id, element) {
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar) sidebar.outerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      const path = window.location.pathname.split('/').pop() || 'Index.html';
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const submenu = link.closest('[id^="submenu-"]');
+          if (submenu) {
+            submenu.classList.remove('hidden');
+            submenu.classList.add('block');
+            submenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+    }
+
+    async function fetchLeaderboard() {
+        try {
+            const res = await fetch('/api/analytics/mechanic-leaderboard');
+            if (!res.ok) throw new Error('Failed to fetch');
+            const data = await res.json();
+            
+            const tbody = document.getElementById('leaderboard-tbody');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Tidak ada data mekanik.</td></tr>';
+                if(document.getElementById('stat-total-mech')) document.getElementById('stat-total-mech').innerText = '0';
+                return;
+            }
+
+            // --- Update Dashboard KPIs & Charts ---
+            if(document.getElementById('stat-total-mech')) {
+                document.getElementById('stat-total-mech').innerText = data.length;
+            }
+            
+            const top5 = data.slice(0, 5);
+            const labels = top5.map(m => m.name.split(' ')[0]); 
+            const assetsData = top5.map(m => m.total_assets);
+            const hoursData = top5.map(m => (m.total_time_minutes / 60).toFixed(1));
+            
+            renderCharts(labels, assetsData, hoursData);
+
+            // Ambil data user yang sedang login untuk memeriksa foto profil lokal
+            const loggedInUser = JSON.parse(localStorage.getItem('userData')) || {};
+
+            data.forEach((mech, index) => {
+                const hours = Math.floor(mech.total_time_minutes / 60); 
+                const minutes = mech.total_time_minutes % 60;
+                const timeStr = `${hours}h ${minutes}m`;
+
+                // Tentukan Avatar (Cek database, lalu cek localStorage, terakhir gunakan inisial)
+                let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(mech.name)}&background=f97316&color=fff&bold=true`;
+                if (mech.profile_picture) {
+                    avatarUrl = mech.profile_picture;
+                } else if (loggedInUser.name && loggedInUser.name.toLowerCase() === mech.name.toLowerCase() && loggedInUser.profile_picture) {
+                    avatarUrl = loggedInUser.profile_picture;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-5 text-center font-bold text-gray-500 text-base">${index + 1}</td>
+                        <td class="px-6 py-5 text-center">
+                            <img src="${avatarUrl}" class="w-10 h-10 rounded-full shadow-sm mx-auto object-cover">
+                        </td>
+                        <td class="px-6 py-5 font-mono text-gray-500">${mech.userId || mech.userid || mech.nik || mech.id || '-'}</td>
+                        <td class="px-6 py-5 font-bold text-gray-800">${mech.name}</td>
+                        <td class="px-6 py-5 text-center font-bold text-orange-600 text-lg">${mech.total_assets}</td>
+                        <td class="px-6 py-5 text-center font-mono font-bold text-gray-500">${timeStr}</td>
+                    </tr>
+                `;
+            });
+        } catch (error) {
+            console.error(error);
+            document.getElementById('leaderboard-tbody').innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500">Gagal memuat leaderboard.</td></tr>';
+        }
+    }
+
+    let assetsChartInstance = null;
+    let hoursChartInstance = null;
+
+    function renderCharts(labels, assetsData, hoursData) {
+        const ctxAssets = document.getElementById('assetsChart');
+        const ctxHours = document.getElementById('hoursChart');
+        if(!ctxAssets || !ctxHours) return;
+
+        if(assetsChartInstance) assetsChartInstance.destroy();
+        if(hoursChartInstance) hoursChartInstance.destroy();
+
+        assetsChartInstance = new Chart(ctxAssets.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Assets Repaired',
+                    data: assetsData,
+                    backgroundColor: '#f97316',
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        hoursChartInstance = new Chart(ctxHours.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: hoursData,
+                    backgroundColor: ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { position: 'right', labels: { boxWidth: 10, font: {size: 11} } } 
+                } 
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          
+          // Tambahkan fallback URL avatar inisial
+          const avatarUrl = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+          document.getElementById('header-avatar').src = avatarUrl;
+      }
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+      
+      fetchLeaderboard();
+    });
+  </script>
+  <script src="gtranslate.js"></script>
+  <script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

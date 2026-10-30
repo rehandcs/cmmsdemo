@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Order History - Can Sport CMMS</title>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="api-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+  <!-- Overlay Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- Container Sidebar Eksternal -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <!-- Wrapper Konten Utama -->
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+    
+    <!-- Top Header -->
+    <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+      <div class="flex items-center space-x-4 text-sm">
+        <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="https://ui-avatars.com/api/?name=Admin&background=f97316&color=fff&bold=true" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200 object-cover">
+          <div class="text-right">
+            <span id="header-user-name" class="block text-sm font-bold text-gray-800">Demo User</span>
+            <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Admin</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-[#f8f9fa]">
+      <div class="max-w-[1400px] mx-auto">
+        
+        <!-- Header Page -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+              <i class='bx bx-history text-orange-500 text-3xl mr-2'></i> Riwayat Work Order
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Daftar rekaman seluruh tiket Work Order yang telah terselesaikan (Completed / Closed).</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+              <i class='bx bx-check-double mr-1.5 text-base'></i> <span id="totalCompletedCount">0 Selesai</span>
+            </span>
+            <button onclick="fetchHistory()" class="px-3.5 py-1.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 shadow-sm flex items-center transition-colors">
+              <i class='bx bx-refresh text-lg mr-1'></i> Refresh
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center justify-between">
+          <div class="flex-1 min-w-[240px] relative">
+            <i class='bx bx-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg'></i>
+            <input type="text" id="searchInput" oninput="renderTable()" placeholder="Cari No. WO, Mesin, Pelapor, atau PIC..." 
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+          </div>
+
+          <div class="flex items-center gap-3">
+            <select id="typeFilter" onchange="renderTable()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="">Semua Tipe (Semua)</option>
+              <option value="CORRECTIVE">Corrective Maintenance</option>
+              <option value="PREVENTIVE">Preventive Maintenance</option>
+            </select>
+
+            <select id="statusFilter" onchange="renderTable()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="">Semua Status Selesai</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CLOSED">CLOSED</option>
+              <option value="ALL">Semua Tiket</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- History Table Card -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase text-xs tracking-wider">
+                  <th class="py-3.5 px-4 font-semibold">No. Tiket / WO</th>
+                  <th class="py-3.5 px-4 font-semibold">Tipe</th>
+                  <th class="py-3.5 px-4 font-semibold">Asset / Mesin</th>
+                  <th class="py-3.5 px-4 font-semibold">Deskripsi Masalah / Pekerjaan</th>
+                  <th class="py-3.5 px-4 font-semibold">PIC / Teknisi</th>
+                  <th class="py-3.5 px-4 font-semibold">Tanggal Selesai</th>
+                  <th class="py-3.5 px-4 font-semibold text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody" class="divide-y divide-gray-100 text-gray-700">
+                <tr>
+                  <td colspan="7" class="py-8 text-center text-gray-400">
+                    <i class='bx bx-loader-alt bx-spin text-2xl text-orange-500 mb-2'></i>
+                    <p>Memuat riwayat work order...</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    let allWorkOrders = [];
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById('sidebar-container').innerHTML = html;
+          setActiveMenu();
+        }).catch(err => console.error("Error loading sidebar:", err));
+    }
+
+    function setActiveMenu() {
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === 'WorkOrderHistory.html') {
+          link.classList.remove('text-gray-600', 'hover:bg-orange-100');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSub = link.closest('[id^="submenu-"]');
+          if (parentSub) {
+            parentSub.classList.remove('hidden');
+            parentSub.classList.add('block');
+            const icon = parentSub.previousElementSibling.querySelector('.dropdown-icon');
+            if (icon) icon.style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+    }
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch('/api/workorders');
+        const data = await res.json();
+        allWorkOrders = Array.isArray(data) ? data : [];
+        renderTable();
+      } catch (err) {
+        console.error("Gagal memuat work orders:", err);
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-red-500">Gagal mengambil data dari server.</td></tr>`;
+      }
+    }
+
+    function renderTable() {
+      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      const typeFilter = document.getElementById('typeFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+
+      const completedItems = allWorkOrders.filter(w => {
+        const st = (w.status || '').toUpperCase();
+        if (statusFilter === 'ALL') return true;
+        if (statusFilter === 'COMPLETED') return st === 'COMPLETED';
+        if (statusFilter === 'CLOSED') return st === 'CLOSED';
+        return st === 'COMPLETED' || st === 'CLOSED';
+      });
+
+      document.getElementById('totalCompletedCount').innerText = `${completedItems.length} Selesai`;
+
+      const filtered = completedItems.filter(item => {
+        const matchQ = (item.wo_id || item.id || '').toString().toLowerCase().includes(q) ||
+                       (item.asset_id || '').toLowerCase().includes(q) ||
+                       (item.machine_name || '').toLowerCase().includes(q) ||
+                       (item.pic_name || item.name || '').toLowerCase().includes(q) ||
+                       (item.problem_description || '').toLowerCase().includes(q);
+        const matchType = !typeFilter || item.type === typeFilter;
+        return matchQ && matchType;
+      });
+
+      const tbody = document.getElementById('historyTableBody');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-400">Tidak ada riwayat work order yang sesuai filter.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(wo => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-50/80 transition-colors";
+        
+        const isCorrective = (wo.type || '').toUpperCase() === 'CORRECTIVE';
+        const typeBadge = isCorrective 
+          ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700">CORRECTIVE</span>`
+          : `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-700">PREVENTIVE</span>`;
+
+        const st = (wo.status || 'COMPLETED').toUpperCase();
+        let statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Completed</span>`;
+        if (st === 'CLOSED') {
+          statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">Closed</span>`;
+        }
+
+        const dateStr = wo.target_date || wo.request_time || wo.created_at || 'Hari ini';
+
+        tr.innerHTML = `
+          <td class="py-3.5 px-4 font-mono font-semibold text-gray-800">${wo.wo_id || 'WO-' + wo.id}</td>
+          <td class="py-3.5 px-4">${typeBadge}</td>
+          <td class="py-3.5 px-4 font-medium text-gray-800">
+            <div>${wo.machine_name || 'Mesin Pabrik'}</div>
+            <div class="text-xs text-gray-400 font-mono">${wo.asset_id || '-'}</div>
+          </td>
+          <td class="py-3.5 px-4 text-gray-600 max-w-xs truncate" title="${wo.problem_description || '-'}">
+            ${wo.problem_description || 'Pemeriksaan rutin dan perbaikan sistem'}
+          </td>
+          <td class="py-3.5 px-4 font-medium text-gray-700">
+            <div class="flex items-center space-x-1.5">
+              <i class='bx bx-user-circle text-gray-400 text-base'></i>
+              <span>${wo.pic_name || wo.name || 'Tim Mekanik'}</span>
+            </div>
+          </td>
+          <td class="py-3.5 px-4 text-xs text-gray-500 font-mono">${dateStr.split('T')[0]}</td>
+          <td class="py-3.5 px-4 text-center">${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+        if (document.getElementById('header-user-name')) document.getElementById('header-user-name').innerText = userData.name;
+        if (document.getElementById('header-user-role')) document.getElementById('header-user-role').innerText = userData.role || 'User';
+        if (document.getElementById('header-avatar') && userData.profile_picture) document.getElementById('header-avatar').src = userData.profile_picture;
+      }
+      fetchHistory();
+    });
+  </script>
+  <script src="sidebar.js"></script>
+</body>
+</html>

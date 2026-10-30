@@ -1,0 +1,645 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Completion Corrective - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+    #reader video { object-fit: cover; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden">
+
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-100 flex items-start justify-center">
+      <div class="bg-white p-5 md:p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-2xl mt-4 relative overflow-hidden">
+        
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500"></div>
+
+        <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-100 text-emerald-500 p-2.5 rounded-lg">
+                    <i class='bx bx-wrench text-3xl'></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Corrective Completion Form</h2>
+                    <p class="text-sm text-gray-500">Repair Completion Form / Corrective Maintenance</p>
+                </div>
+            </div>
+            <a href="Corrective.html" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                <i class='bx bx-x text-3xl'></i>
+            </a>
+        </div>
+
+        <form onsubmit="event.preventDefault(); handleFormSubmit(event); return false;">
+          
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">User Name (Technician)</label>
+            <input type="text" id="user_name" value="Admin Rehand" readonly 
+                   class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-gray-600 bg-gray-200 cursor-not-allowed font-medium">
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Scanner QR Code (Asset ID / Machine ID)</label>
+            <div id="reader" class="w-full bg-gray-900 rounded-xl overflow-hidden border-2 border-emerald-500 mb-3 min-h-[200px] flex items-center justify-center"></div>
+            <div class="flex gap-2">
+                <button type="button" onclick="startScanner()" class="bg-emerald-500 text-white text-xs px-4 py-1.5 rounded hover:bg-emerald-600 transition-colors shadow-md"><i class='bx bx-video mr-1'></i> Start Scanner</button>
+                <button type="button" onclick="stopScanner()" class="bg-gray-500 text-white text-xs px-4 py-1.5 rounded hover:bg-gray-600 transition-colors shadow-md"><i class='bx bx-video-off mr-1'></i> Stop</button>
+            </div>
+          </div>
+
+          <div class="mb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Asset ID</label>
+                <input type="text" id="asset_id" placeholder="Scan or type Asset ID..." required oninput="checkAssetId()"
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white font-mono font-bold">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Asset Name</label>
+                <input type="text" id="name_id" placeholder="Auto-filled..." readonly 
+                       class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-gray-600 bg-gray-200 cursor-not-allowed font-medium">
+            </div>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Work Order List</label>
+            <input type="hidden" id="work_order" required>
+            <button type="button" id="btn_select_wo" onclick="openWOModal()" disabled
+                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-gray-800 bg-gray-200 cursor-not-allowed flex justify-between items-center">
+                <span id="wo_btn_text">-- Select Asset First --</span>
+                <i class='bx bx-list-ul text-xl text-gray-500'></i>
+            </button>
+          </div>
+
+          <div class="mb-5 p-4 bg-emerald-50 border border-emerald-200 rounded-xl" id="reported-evidence-container" style="display: none;">
+            <label class="block text-sm font-bold text-emerald-800 mb-2">Reported Issue Evidence (From Submission)</label>
+            <div class="w-full h-48 bg-gray-200 rounded-xl overflow-hidden relative border-2 border-emerald-300">
+                <img id="reported-evidence-img" class="w-full h-full object-contain cursor-pointer hover:opacity-90 transition-opacity" src="" alt="Reported Evidence" onclick="Swal.fire({imageUrl: this.src, imageAlt: 'Evidence', width: 'auto', showConfirmButton: false, showCloseButton: true, customClass: {image: 'max-h-[80vh] w-auto mx-auto rounded-lg'}})">
+            </div>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Solution Description (Corrective Actions)</label>
+            <textarea type="text" id="solution_desc" rows="4" placeholder="Explain the repair actions taken..." required
+                      class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-gray-800 bg-gray-50 focus:bg-white"></textarea>
+          </div>
+          
+          <div class="mb-8">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Upload Photo / Evidence Repair</label>
+            <div class="flex items-center justify-center w-full relative">
+                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 hover:border-emerald-500 transition-colors overflow-hidden relative">
+                    <div id="upload-placeholder" class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <i class='bx bx-cloud-upload text-4xl text-gray-400 mb-2'></i>
+                        <p class="mb-1 text-sm text-gray-500"><span class="font-bold text-gray-700">Click to upload</span> or drag and drop</p>
+                        <p class="text-xs text-gray-400">PNG, JPG or JPEG (MAX. 5MB)</p>
+                    </div>
+                    <img id="image-preview" class="hidden absolute inset-0 w-full h-full object-cover" />
+                    <input id="file-upload" type="file" class="hidden" accept="image/*" onchange="previewImage(event)" />
+                </label>
+            </div>
+            <button type="button" id="remove-image-btn" class="hidden mt-2 text-sm text-red-500 hover:text-red-700 font-bold flex items-center" onclick="removeImage()">
+                <i class='bx bx-trash mr-1'></i> Remove Image
+            </button>
+          </div>
+
+          <button type="submit" 
+                  class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center">
+            <i class='bx bx-check-shield mr-2'></i> Close Ticket & Save Completion
+          </button>
+        </form>
+
+      </div>
+    </main>
+  </div>
+
+  <div id="woModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden transform transition-all scale-95" id="wo-modal-box">
+      <div class="bg-emerald-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-list-check mr-2 text-xl'></i> Select Active Work Order
+        </h3>
+        <button onclick="closeWOModal()" class="text-emerald-100 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      <div class="p-6 max-h-[60vh] overflow-y-auto">
+         <div id="wo-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+         </div>
+         <div id="no-wo-message" class="text-center text-gray-500 py-8 hidden">
+            <i class='bx bx-check-circle text-5xl text-gray-300 mb-2'></i>
+            <p>Tidak ada Work Order aktif untuk Asset ini.</p>
+         </div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let liveWorkOrders = [];
+    let masterAssets = [];
+    let html5QrCode;
+    let isProcessingQR = false; 
+
+    // Mengatur tampilan buka tutup submenu pada navigasi sidebar kiri
+    function toggleSubmenu(id, element) {
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // Mengubah mode tampilan sidebar melebar atau menyusut untuk memaksimalkan ruang layar
+
+    // Mengambil data work order yang masih aktif dan data master asset dan data master asset dari database asset  di halaman dimuat
+    async function fetchData() {
+        try {
+            const [woRes, assetRes] = await Promise.all([
+                fetch('/api/workorders').catch(() => null),
+                fetch('/api/assets').catch(() => null)
+            ]);
+
+            if (woRes && woRes.ok) liveWorkOrders = await woRes.json();
+            else liveWorkOrders = [];
+            
+            if (assetRes && assetRes.ok) {
+                masterAssets = await assetRes.json();
+            } else {
+                masterAssets = JSON.parse(localStorage.getItem('cmms_assets')) || [];
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const scannedAssetId = urlParams.get('asset_id');
+            if(scannedAssetId) {
+                const assetInput = document.getElementById('asset_id');
+                assetInput.value = scannedAssetId;
+                checkAssetId();
+            }
+        } catch (err) {
+            masterAssets = JSON.parse(localStorage.getItem('cmms_assets')) || [];
+        }
+    }
+
+    // Menampilkan pop up modal yang berisi daftar work order aktif untuk dipilih oleh teknisi
+    function openWOModal() {
+        const modal = document.getElementById('woModal');
+        const box = document.getElementById('wo-modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    // Menyembunyikan pop up pemilihan work order 
+    function closeWOModal() {
+        const modal = document.getElementById('woModal');
+        const box = document.getElementById('wo-modal-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    // Menangkap ID work order yang diklik dari daftar modal dan memasukannya ke dalam form penyelesaian
+    function selectWO(woId, issueDesc) {
+        document.getElementById('work_order').value = woId;
+        const btnText = document.getElementById('wo_btn_text');
+        btnText.innerHTML = `<span class="font-bold text-emerald-600">${woId}</span> - ${issueDesc.substring(0, 30)}...`;
+        
+        closeWOModal();
+        showSelectedEvidence();
+    }
+
+    // Memeriksa validitas ID Asset yang di scan diketik dan menampilkan daftar tiket corrective khusus untuk asset tersebut 
+    function checkAssetId() {
+        const assetInput = document.getElementById('asset_id').value.trim().toLowerCase();
+        const nameInput = document.getElementById('name_id');
+        const btnSelectWo = document.getElementById('btn_select_wo');
+        const woGrid = document.getElementById('wo-grid');
+        const noWoMsg = document.getElementById('no-wo-message');
+        const evidenceContainer = document.getElementById('reported-evidence-container');
+        
+        // Ambil nama teknisi dari form
+        const currentTech = document.getElementById('user_name').value;
+
+        if (evidenceContainer) evidenceContainer.style.display = 'none';
+
+        if (!assetInput) {
+            nameInput.value = "";
+            resetWOButton(btnSelectWo, woGrid, noWoMsg);
+            return;
+        }
+
+        const asset = masterAssets.find(a => {
+            let dbNomor = a.nomor_asset ? String(a.nomor_asset).trim().toLowerCase() : "";
+            let dbMachineId = a.machine_id ? String(a.machine_id).trim().toLowerCase() : "";
+            return dbNomor === assetInput || dbMachineId === assetInput;
+        });
+        
+        if (asset) {
+            document.getElementById('asset_id').value = asset.nomor_asset || assetInput;
+
+            let mName = asset.machine_name || "";
+            if (!mName || mName.trim() === "" || mName.trim() === "-") {
+                nameInput.value = "Mesin Ditemukan (Tanpa Nama)";
+            } else {
+                nameInput.value = mName;
+            }
+
+            if (typeof liveWorkOrders !== 'undefined') {
+                // Filter Tipe CORRECTIVE dan Teknisi Saat Ini
+                const matchingWOs = liveWorkOrders.filter(wo => {
+                    let woAssetId = wo.asset_id ? String(wo.asset_id).trim().toLowerCase() : "";
+                    let dbNomor = asset.nomor_asset ? String(asset.nomor_asset).trim().toLowerCase() : "";
+                    let dbMachineId = asset.machine_id ? String(asset.machine_id).trim().toLowerCase() : "";
+                    let isAssetMatch = (woAssetId === dbNomor || woAssetId === dbMachineId || woAssetId === assetInput);
+
+                    let techWo = wo.technician ? String(wo.technician).trim().toLowerCase() : "";
+                    let techForm = currentTech ? String(currentTech).trim().toLowerCase() : "";
+
+                    return isAssetMatch && 
+                           wo.status !== 'COMPLETED' && 
+                           wo.status !== 'CLOSED' &&
+                           wo.type === 'CORRECTIVE' && 
+                           techWo === techForm;
+                });
+                
+                woGrid.innerHTML = '';
+                if(matchingWOs.length > 0) {
+                    noWoMsg.classList.add('hidden');
+                    
+                    matchingWOs.forEach(wo => {
+                        const woId = `WO-${wo.id}`;
+                        const badgeColor = 'bg-red-100 text-red-600';
+                        const typeLabel = wo.type;
+
+                        const boxHtml = `
+                            <div onclick="selectWO('${woId}', '${wo.issue_desc.replace(/'/g, "\\'")}')" 
+                                 class="p-5 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all shadow-sm flex flex-col justify-between">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h4 class="font-extrabold text-gray-800 text-lg">${woId}</h4>
+                                    <span class="text-xs font-bold px-2 py-1 rounded-md ${badgeColor}">${typeLabel}</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-4 flex-1">${wo.issue_desc}</p>
+                                <div class="flex items-center text-xs text-gray-400 font-medium">
+                                    <i class='bx bx-time-five mr-1'></i> ${new Date(wo.request_time || wo.date_created).toLocaleDateString('id-ID')}
+                                </div>
+                            </div>
+                        `;
+                        woGrid.innerHTML += boxHtml;
+                    });
+
+                    btnSelectWo.disabled = false;
+                    btnSelectWo.classList.remove('bg-gray-200', 'cursor-not-allowed');
+                    btnSelectWo.classList.add('bg-white', 'cursor-pointer');
+                    document.getElementById('wo_btn_text').innerText = "Click to Select Work Order";
+                } else {
+                    noWoMsg.classList.remove('hidden');
+                    btnSelectWo.disabled = true;
+                    btnSelectWo.classList.add('bg-gray-200', 'cursor-not-allowed');
+                    btnSelectWo.classList.remove('bg-white', 'cursor-pointer');
+                    document.getElementById('wo_btn_text').innerText = "-- No Open WOs Found --";
+                }
+            }
+        } else {
+            nameInput.value = "Asset Not Found";
+            resetWOButton(btnSelectWo, woGrid, noWoMsg);
+        }
+    }
+
+    // Mengosongkan data pilihan work order dan mengunci tombol pilih ketika ID asset tidak valid 
+    function resetWOButton(btnSelectWo, woGrid, noWoMsg) {
+        if(btnSelectWo) {
+            document.getElementById('wo_btn_text').innerText = "-- Select Asset First --";
+            document.getElementById('work_order').value = "";
+            btnSelectWo.disabled = true;
+            btnSelectWo.classList.add('bg-gray-200', 'cursor-not-allowed');
+            btnSelectWo.classList.remove('bg-white', 'cursor-pointer');
+            
+            woGrid.innerHTML = '';
+            noWoMsg.classList.add('hidden');
+            
+            document.getElementById('reported-evidence-container').style.display = 'none';
+        }
+    }
+
+    // Menampilkan gambar bukti kerusakan awal yang dilaporkan pada work order yang sedang dipilih 
+    function showSelectedEvidence() {
+        const woInput = document.getElementById('work_order');
+        const evidenceContainer = document.getElementById('reported-evidence-container');
+        const evidenceImg = document.getElementById('reported-evidence-img');
+        
+        if (woInput.value) {
+            const woIdNumber = woInput.value.replace('WO-', '');
+            const selectedWO = liveWorkOrders.find(wo => String(wo.id) === String(woIdNumber));
+            
+            if (selectedWO && selectedWO.image_path) {
+                evidenceImg.src = selectedWO.image_path.startsWith('http') ? selectedWO.image_path : `/${selectedWO.image_path}`;
+            } else {
+                evidenceImg.src = "https://via.placeholder.com/400x200?text=No+Evidence+Photo+Available";
+            }
+            evidenceContainer.style.display = 'block';
+        } else {
+            evidenceContainer.style.display = 'none';
+        }
+    }
+
+    // Mengaktifkan kamera perangkat untuk memindai QR Code ID Asset.
+    function startScanner() {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        
+        if (html5QrCode.isScanning) return; 
+        isProcessingQR = false; 
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                if (isProcessingQR) return; 
+                isProcessingQR = true; 
+
+                document.getElementById('asset_id').value = decodedText;
+                checkAssetId();
+                stopScanner();
+                Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'QR Code Terbaca!' });
+            },
+            (errorMessage) => { /* abaikan error */ }
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+        });
+    }
+
+    // Memastikan akses kamera pemindai QR Code
+    function stopScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                isProcessingQR = false; 
+            }).catch(err => {
+                console.error("Stop failed", err);
+            });
+        }
+    }
+
+    function getWibDateTimeString(date = new Date()) {
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+
+        const values = {};
+        formatter.formatToParts(date).forEach(part => {
+            if (part.type !== 'literal') {
+                values[part.type] = part.value;
+            }
+        });
+
+        return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+    }
+
+    // Fungsi ini untuk memuat komponen sidebar secara dinamis dari file eksternal sidebar.html dan menyisipkan ke dalam halaman utama 
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    // Fungsi ini untuk menandai menu di sidebar yang sedang aktif berdasarkan path URL saat ini agar pengguna mengetahui posisi halamannya
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'AssetManagement.html' && link.getAttribute('href') === 'AssetManagement.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+    // Active link highlighter
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      
+      // Jika data ditemukan, masukkan ke dalam HTML
+      if (userData) {
+          // Menampilkan Nama
+          document.getElementById('header-user-name').innerText = userData.name;
+          
+          // Update juga nama di input form (Sangat penting agar sinkron dengan Database)
+          if(document.getElementById('user_name')) {
+              document.getElementById('user_name').value = userData.name;
+          }
+          
+          // Menampilkan Role (jika kosong, default ke 'User')
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          
+          // Menampilkan Foto Profil
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+      fetchData(); 
+      startScanner(); 
+    });
+
+    // Menampilkan pratinjau foto hasil perbaikan evidance repair yang baru saja dipilih diunggah pengguna
+    function previewImage(event) {
+        const input = event.target;
+        const preview = document.getElementById('image-preview');
+        const placeholder = document.getElementById('upload-placeholder');
+        const removeBtn = document.getElementById('remove-image-btn');
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                removeBtn.classList.remove('hidden');
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Menghapus foto perbakan yang sudah dipilih agar batal diunggah 
+    function removeImage() {
+        document.getElementById('file-upload').value = "";
+        const preview = document.getElementById('image-preview');
+        preview.src = "";
+        preview.classList.add('hidden');
+        document.getElementById('upload-placeholder').classList.remove('hidden');
+        document.getElementById('remove-image-btn').classList.add('hidden');
+    }
+
+    // Memunculkan pop up notifikasi khusus di tengah layar 
+    function showCustomPopup(title, text, redirectUrl, colorClass, iconClass) {
+        const modalHtml = `
+        <div id="custom-ui-popup" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] backdrop-blur-sm">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center transform transition-all">
+                <div class="w-20 h-20 ${colorClass} rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg">
+                    <i class='bx ${iconClass} text-5xl text-white'></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">${title}</h3>
+                <p class="text-gray-600 mb-8">${text}</p>
+                <button type="button" onclick="window.location.href='${redirectUrl}'" class="w-full ${colorClass} hover:opacity-90 text-white font-bold text-lg py-3.5 rounded-xl transition-all shadow-md">
+                    Close
+                </button>
+            </div>
+        </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    // Mengumpulkan semua data formulir termasuk foto dan mengirimkannya ke endpoint penyelesaian completion form 
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        
+        const woInput = document.getElementById('work_order');
+        if(!woInput.value) {
+            Swal.fire({ icon: 'warning', title: 'Pilih Work Order', text: 'Harap pilih Work Order terlebih dahulu dari pop up!', confirmButtonColor: '#10b981' });
+            return;
+        }
+
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin mr-2'></i> Saving...";
+        btn.classList.add('opacity-80', 'cursor-not-allowed');
+        btn.disabled = true;
+
+        const datetime = getWibDateTimeString();
+
+        const formData = new FormData();
+        formData.append('user_name', document.getElementById('user_name').value);
+        formData.append('asset_id', document.getElementById('asset_id').value);
+        formData.append('asset_name', document.getElementById('name_id').value);
+        formData.append('datetime', datetime);
+        formData.append('work_order', woInput.value);
+        formData.append('solution_desc', document.getElementById('solution_desc').value);
+
+        const fileInput = document.getElementById('file-upload');
+        if (fileInput.files && fileInput.files[0]) { 
+            const cloudForm = new FormData();
+            cloudForm.append('file', fileInput.files[0]);
+            cloudForm.append('api_key', '432919999388821');
+            cloudForm.append('upload_preset', 'cmmscsb'); // Harap isi dengan Preset Cloudinary Anda
+            cloudForm.append('api_secret', '789291439535634'); // Un-comment jika konfigurasi request API Anda mewajibkan Secret
+
+            const cloudRes = await fetch('https://api.cloudinary.com/v1_1/bfvxjarw/image/upload', {
+                method: 'POST',
+                body: cloudForm
+            });
+            const cloudData = await cloudRes.json();
+
+            formData.append('image', cloudData.secure_url); 
+            formData.append('image_after', cloudData.secure_url); 
+        }
+
+        const endpoint = '/api/completion/corrective';
+
+        try {
+            const res = await fetch(`${endpoint}`, { method: 'POST', body: formData });
+            
+            if(res.ok) {
+                const result = await res.json();
+                const assetIdVal = document.getElementById('asset_id').value;
+                const assetData = masterAssets.find(a => (a.nomor_asset && String(a.nomor_asset).trim().toLowerCase() === assetIdVal.toLowerCase()) || (a.machine_id && String(a.machine_id).trim().toLowerCase() === assetIdVal.toLowerCase()));
+                const area = assetData && assetData.area ? assetData.area : '-';
+                const lokasi = assetData && assetData.location ? assetData.location : '-';
+                
+                const reportHtml = `
+                    <div class="text-center mb-6">
+                        <i class='bx bx-check-circle text-6xl text-emerald-500 mb-3'></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Completion Berhasil!</h2>
+                        <p class="text-gray-500">Data completion berhasil direkam. ${result.whatsappNotification === 'failed' ? 'Notifikasi WhatsApp gagal dikirim; periksa log backend.' : 'Notifikasi WhatsApp berhasil dikirim.'}</p>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 text-left space-y-3 text-sm">
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Work Order</span><span class="col-span-2 font-bold text-gray-800">: ${document.getElementById('work_order').value}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Waktu Pengajuan</span><span class="col-span-2 font-bold text-gray-800">: ${datetime}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Nama Mesin</span><span class="col-span-2 font-bold text-gray-800">: ${document.getElementById('name_id').value}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Nomor Asset</span><span class="col-span-2 font-bold text-gray-800">: ${assetIdVal}</span></div>
+                        <div class="grid grid-cols-3 border-b border-gray-200 pb-2"><span class="text-gray-500 font-medium">Area / Lokasi</span><span class="col-span-2 font-bold text-gray-800">: ${area} / ${lokasi}</span></div>
+                        <div class="grid grid-cols-3 pb-2"><span class="text-gray-500 font-medium">Maintenance</span><span class="col-span-2 font-bold text-emerald-600">: Corrective</span></div>
+                    </div>
+                    <button onclick="window.location.href='TicketWO.html'" class="mt-6 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md">
+                        Selesai & Kembali ke Ticket Order
+                    </button>
+                `;
+                btn.closest('form').parentElement.innerHTML = reportHtml;
+            } else {
+                const errData = await res.json();
+                Swal.fire({ icon: 'error', title: 'Database Error', text: errData.error || "Gagal menyimpan.", confirmButtonColor: '#10b981' });
+                resetBtn(btn);
+            }
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Gagal terhubung ke server.', confirmButtonColor: '#10b981' });
+            resetBtn(btn);
+        }
+    }
+    
+    // Mengembalikan tombol submit formulir ke status normal dan bisa diklik kembali apabila terjadi error jaringan 
+    function resetBtn(btn) {
+        btn.innerHTML = "<i class='bx bx-check-shield mr-2'></i> Close Ticket & Save Completion";
+        btn.classList.remove('opacity-80', 'cursor-not-allowed');
+        btn.disabled = false;
+    }
+</script>
+<script src="gtranslate.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

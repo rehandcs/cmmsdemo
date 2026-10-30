@@ -1,0 +1,27 @@
+{
+  "name": "cmms-cansport-demo",
+  "version": "1.0.0",
+  "description": "Demo CMMS PT. Can Sports Industrial Indonesia (In-Memory Mock Backend, No Database Required)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "deploy": "firebase deploy"
+  },
+  "keywords": [
+    "cmms",
+    "maintenance",
+    "demo",
+    "firebase"
+  ],
+  "author": "Rehand Naifi Surya",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "firebase": "^13.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

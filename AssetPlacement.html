@@ -1,0 +1,373 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Placement - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+    #reader video { object-fit: cover; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+  <!-- Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- Container Sidebar -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+    <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+        <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+          <i class='bx bx-menu text-2xl'></i>
+        </button>
+
+      <div class="flex items-center space-x-4 text-sm">
+        <div class="flex items-center space-x-3">
+            <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200 object-cover">
+            <div class="text-right">
+                <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+                <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+            </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 bg-gray-50 flex items-start justify-center w-full">
+      
+      <div class="bg-white p-5 md:p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-2xl mt-4 relative overflow-hidden">
+        
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-indigo-500"></div>
+
+        <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-100 text-indigo-500 p-2.5 rounded-lg">
+                    <i class='bx bx-qr-scan text-3xl'></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Asset Placement</h2>
+                    <p class="text-sm text-gray-500">Pindahkan area atau lokasi mesin (Update Position)</p>
+                </div>
+            </div>
+        </div>
+
+        <form onsubmit="event.preventDefault(); submitPlacement(); return false;">
+
+          <div class="mb-5">
+            <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider text-xs">Scanner Barcode (Asset ID)</label>
+            <div id="reader" class="w-full bg-gray-900 rounded-xl overflow-hidden border-2 border-indigo-500 mb-3 min-h-[250px] flex items-center justify-center relative"></div>
+            <div class="flex justify-center gap-3 mb-4">
+                <button type="button" onclick="startScanner()" class="bg-indigo-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-indigo-600 transition-colors shadow-md font-bold flex items-center">
+                    <i class='bx bx-video mr-2 text-lg'></i> Start Scanner
+                </button>
+                <button type="button" onclick="stopScanner()" class="bg-gray-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors shadow-md font-bold flex items-center">
+                    <i class='bx bx-video-off mr-2 text-lg'></i> Stop
+                </button>
+            </div>
+          </div>
+
+          <div class="relative flex py-3 items-center mb-2">
+              <div class="flex-grow border-t border-gray-300"></div>
+              <span class="flex-shrink-0 mx-4 text-gray-400 text-xs font-bold uppercase tracking-wider">Asset Detail</span>
+              <div class="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Asset ID</label>
+                  <input type="text" id="asset_id" oninput="checkAssetId()" placeholder="Ketik atau Scan Asset ID..." required
+                         class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-sm font-bold font-mono bg-gray-50 focus:bg-white">
+              </div>
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine Name</label>
+                  <input type="text" id="machine_name" readonly placeholder="Auto-filled..." 
+                         class="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-600 bg-gray-200 cursor-not-allowed transition-colors text-sm font-bold">
+              </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Current Area</label>
+                  <input type="text" id="current_area" readonly placeholder="Auto-filled..." 
+                         class="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-600 bg-gray-200 cursor-not-allowed transition-colors text-sm font-bold">
+              </div>
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Current Location</label>
+                  <input type="text" id="current_location" readonly placeholder="Auto-filled..." 
+                         class="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-600 bg-gray-200 cursor-not-allowed transition-colors text-sm font-bold">
+              </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">New Area</label>
+                <select id="new_area" required class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-sm font-bold bg-gray-50 focus:bg-white cursor-pointer appearance-none">
+                    <option value="" disabled selected>Pilih Area Baru...</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">New Location</label>
+                <select id="new_location" required class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-sm font-bold bg-gray-50 focus:bg-white cursor-pointer appearance-none">
+                    <option value="" disabled selected>Pilih Lokasi Baru...</option>
+                </select>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-submit"
+                  class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-lg py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center">
+            <i class='bx bx-check-circle mr-2'></i> Save Position
+          </button>
+        </form>
+<br><br><br><br>
+      </div>
+    </main>
+  </div>
+
+<script>
+    let masterAssets = [];
+    let html5QrCode;
+    let isProcessingQR = false; 
+
+    // Fungsi ini untuk mengatur tampilan sidebar (membuka atau menutup) pada mobile dan dekstop agar responsif menyusun ukuran layar  
+
+    // Fungsi ini untuk menampilkan atau menyembunyikan submenu pada sidebar beserta animasi rotasi icon dropdown
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) sidebar.classList.remove('sidebar-collapsed');
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) { 
+        submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)'; 
+      } else { 
+        submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; 
+      }
+    }
+
+    // Fungsi ini untuk memuat komponen sidebar secara dinamis dari file eksternal sidebar.html dan menyisipkan ke dalam halaman utama
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    // Fungsi ini untuk menandai menu di sidebar yang sedang aktif berdasarkan path URL saat ini agar pengguna mengetahui posisi halamannya 
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        // Highlighting menu AssetPlacement atau AssetPlacement jika tidak ada AssetPlacement di sidebar
+        if (link.getAttribute('href') === path || link.getAttribute('href') === 'AssetPlacement.html' || link.getAttribute('href') === 'AssetPlacement.html') {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadSidebar();
+
+      // Data User
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+
+      await fetchAssets();
+    });
+
+    // Fungsi ini untuk  mengambil data master asset dari server backend dan mengisi opsi dropdown untuk area dan lokasi baru
+    async function fetchAssets() {
+        try {
+            const res = await fetch('/api/assets');
+            if(res.ok) {
+                masterAssets = await res.json();
+                
+                // Kumpulkan unique Area & Location untuk dropdown
+                const areaSet = new Set(), locationSet = new Set();
+                masterAssets.forEach(item => {
+                    if(item.area && item.area !== '-') areaSet.add(item.area);
+                    if(item.location && item.location !== '-') locationSet.add(item.location);
+                });
+
+                const areaSelect = document.getElementById('new_area');
+                areaSelect.innerHTML = '<option value="" disabled selected>Pilih Area Baru...</option>';
+                areaSet.forEach(area => { areaSelect.innerHTML += `<option value="${area}">${area}</option>`; });
+
+                const locSelect = document.getElementById('new_location');
+                locSelect.innerHTML = '<option value="" disabled selected>Pilih Lokasi Baru...</option>';
+                locationSet.forEach(loc => { locSelect.innerHTML += `<option value="${loc}">${loc}</option>`; });
+            } else {
+                throw new Error("Gagal mengambil data dari server");
+            }
+        } catch (err) {
+            Swal.fire('Error Database', 'Gagal memuat data asset dari server.', 'error');
+        }
+    }
+
+    // Fungsi ini untuk mengaktifkan kamera perangkat dan memulai pemindaian QR code atau Barcode guna mendapatkan ID Asset 
+    function startScanner() {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        if (html5QrCode.isScanning) return; 
+        isProcessingQR = false; 
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                if (isProcessingQR) return; 
+                isProcessingQR = true; 
+
+                document.getElementById('asset_id').value = decodedText;
+                checkAssetId();
+                stopScanner();
+                Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'QR Code Terbaca!' });
+            },
+            (errorMessage) => { /* Abaikan error */ }
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+        });
+    }
+
+    // Fungsi ini untuk mematikan kamera dan menghentikan proses pemindaian QR Barcode / barcode secara paksa
+    function stopScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                isProcessingQR = false; 
+            }).catch(err => {
+                console.error("Stop failed", err);
+            });
+        }
+    }
+
+    // Fungsi Pencarian Asset (Live Validasi)
+    function checkAssetId() {
+        const assetInput = document.getElementById('asset_id').value.trim().toLowerCase();
+        const nameInput = document.getElementById('machine_name');
+        const currentAreaInput = document.getElementById('current_area');
+        const currentLocationInput = document.getElementById('current_location');
+        
+        if (!assetInput) {
+            nameInput.value = "";
+            if(currentAreaInput) currentAreaInput.value = "";
+            if(currentLocationInput) currentLocationInput.value = "";
+            return;
+        }
+
+        const asset = masterAssets.find(a => 
+            (a.nomor_asset && String(a.nomor_asset).trim().toLowerCase() === assetInput) || 
+            (a.machine_id && String(a.machine_id).trim().toLowerCase() === assetInput)
+        );
+        
+        if (asset) {
+            document.getElementById('asset_id').value = asset.nomor_asset || assetInput;
+            nameInput.value = asset.machine_name || "Mesin Tanpa Nama";
+            if(currentAreaInput) currentAreaInput.value = asset.area || "-";
+            if(currentLocationInput) currentLocationInput.value = asset.location || "-";
+        } else {
+            nameInput.value = "Asset Not Found";
+            if(currentAreaInput) currentAreaInput.value = "";
+            if(currentLocationInput) currentLocationInput.value = "";
+        }
+    }
+
+    // Submit Perubahan Posisi
+    async function submitPlacement() {
+        const id = document.getElementById('asset_id').value.trim();
+        const newLoc = document.getElementById('new_location').value.trim();
+        const newArea = document.getElementById('new_area').value.trim();
+        const nameInput = document.getElementById('machine_name').value;
+        const btn = document.getElementById('btn-submit');
+
+        if (!id || nameInput === "Asset Not Found" || nameInput === "") {
+            Swal.fire('Perhatian', 'Asset ID tidak valid atau tidak ditemukan!', 'warning');
+            return;
+        }
+
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin mr-2'></i> Processing...";
+        btn.classList.add('opacity-80', 'cursor-not-allowed');
+        btn.disabled = true;
+
+        try {
+            // Cari data lama secara lengkap untuk UPSERT/Update
+            const asset = masterAssets.find(a => a.nomor_asset === id || a.machine_id === id);
+            
+            const currentFullLocation = (asset.area ? asset.area + ' ' : '') + (asset.location || '');
+            const payload = {
+                ...asset, 
+                nomor_asset: id,
+                location: newLoc || asset.location,
+                area: newArea || asset.area,
+                before_location: currentFullLocation || '-',
+                move_date: new Date().toISOString().split('T')[0]
+            };
+
+            const res = await fetch('/api/assets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: `Posisi Asset ${nameInput} berhasil dipindahkan ke ${newArea} / ${newLoc}`,
+                    confirmButtonColor: '#4f46e5'
+                }).then(() => {
+                    // Reset Form setelah sukses
+                    document.getElementById('asset_id').value = '';
+                    document.getElementById('machine_name').value = '';
+                    if(document.getElementById('current_area')) document.getElementById('current_area').value = '';
+                    if(document.getElementById('current_location')) document.getElementById('current_location').value = '';
+                    document.getElementById('new_area').value = '';
+                    document.getElementById('new_location').value = '';
+                    fetchAssets(); // Refresh local data just in case
+                });
+            } else {
+                Swal.fire('Gagal', 'Gagal memindahkan asset di database', 'error');
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Koneksi ke server backend gagal', 'error');
+        } finally {
+            btn.innerHTML = "<i class='bx bx-check-circle mr-2'></i> Save Position";
+            btn.classList.remove('opacity-80', 'cursor-not-allowed');
+            btn.disabled = false;
+        }
+    }
+</script>
+<script src="gtranslate.js"></script>
+<script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

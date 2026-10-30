@@ -1,0 +1,875 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Management - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+  <script src="../backend/config.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+  <!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+    <div class="flex items-center space-x-3">
+        <!-- Perhatikan ID "header-avatar" -->
+        <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200 object-cover">
+        <div class="text-right">
+            <!-- Perhatikan ID "header-user-name" -->
+            <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+            <!-- Perhatikan ID "header-user-role" -->
+            <span id="header-user-role" class="block text-[10px] font-medium text-gray-500 uppercase">Loading...</span>
+        </div>
+    </div>
+  </div>
+</header>
+  
+  <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50 flex flex-col min-h-0">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 mb-2 shrink-0">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Asset Management</h1>
+        <p class="text-sm text-gray-500 mt-1">Monitor KPIs, machine locations, status, and detailed maintenance records.</p>
+      </div>
+      
+      <div class="flex items-center gap-3">
+          <button onclick="openHistoryPlacementModal()" class="flex items-center px-4 py-2 bg-blue-500 text-white border border-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-medium shadow-sm transition-all">
+              <i class='bx bx-history mr-2 text-xl'></i>
+              Histori Placement
+          </button>
+
+          <button onclick="openHistoryMaintenanceModal()" class="flex items-center px-4 py-2 bg-emerald-500 text-white border border-emerald-500 rounded-lg hover:bg-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-sm font-medium shadow-sm transition-all">
+              <i class='bx bx-wrench mr-2 text-xl'></i>
+              Histori Maintenance
+          </button>
+
+          <div class="relative">
+              <button onclick="document.getElementById('filterDropdown').classList.toggle('hidden')" class="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium shadow-sm transition-all bg-white text-gray-700">
+                  <i class='bx bx-filter text-blue-500 mr-2 text-xl'></i>
+                  Filter
+              </button>
+              
+              <div id="filterDropdown" class="hidden absolute right-0 mt-2 w-[300px] sm:w-[400px] bg-white rounded-2xl shadow-xl z-50 border border-gray-100 p-4 sm:p-6 text-gray-800">
+                  <div class="text-center mb-5">
+                      <h3 class="text-lg font-bold text-gray-900">Filter Assets</h3>
+                      <p class="text-xs text-gray-500 mt-1">Start your process with solution from our community</p>
+                  </div>
+                  <div class="relative mb-4">
+                      <i class='bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg'></i>
+                      <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search assets..." 
+                             class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-all bg-gray-50">
+                  </div>
+                  <div class="flex flex-col sm:flex-row gap-2">
+                      <select id="filterLocation" onchange="renderTable()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500 bg-white">
+                          <option value="">Location</option>
+                      </select>
+                      <select id="filterStatus" onchange="renderTable()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500 bg-white">
+                          <option value="">Status</option>
+                          <option value="Running">Running</option>
+                          <option value="Breakdown">Breakdown</option>
+                          <option value="PM">PM</option>
+                      </select>
+                      <select id="filterArea" onchange="renderTable()" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500 bg-white">
+                          <option value="">Area</option>
+                      </select>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 shrink-0">
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+            <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Assets</p><h3 class="text-3xl font-extrabold text-gray-800" id="card-total"></h3></div>
+            <div class="bg-blue-50 text-blue-500 w-12 h-12 rounded-lg flex items-center justify-center text-2xl"><i class='bx bx-cube-alt'></i></div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+            <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Running</p><h3 class="text-3xl font-extrabold text-gray-800" id="card-running"></h3></div>
+            <div class="bg-emerald-50 text-emerald-500 w-12 h-12 rounded-lg flex items-center justify-center text-2xl"><i class='bx bx-check-circle'></i></div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border-l-4 border-l-red-500 border-gray-200 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+            <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Breakdown Alert</p><h3 class="text-3xl font-extrabold text-gray-800" id="card-breakdown"></h3></div>
+            <div class="bg-red-50 text-red-500 w-12 h-12 rounded-lg flex items-center justify-center text-2xl"><i class='bx bx-error'></i></div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+            <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Under PM</p><h3 class="text-3xl font-extrabold text-gray-800" id="card-pm"></h3></div>
+            <div class="bg-orange-50 text-orange-500 w-12 h-12 rounded-lg flex items-center justify-center text-2xl"><i class='bx bx-wrench'></i></div>
+        </div>
+    </div>
+
+    <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-0">
+      <div class="flex-1 overflow-x-auto overflow-y-auto">
+        <table class="w-full text-left border-collapse min-w-[1200px] table-fixed">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 sticky top-0 z-10">
+              <th class="px-6 py-5 font-bold w-[10%]">Asset ID</th>
+              <th class="px-6 py-5 font-bold w-[18%]">Machine Name</th>
+              <th class="px-6 py-5 font-bold w-[15%]">Before Location</th>
+              <th class="px-6 py-5 font-bold w-[15%]">Current Location</th>
+              <th class="px-6 py-5 font-bold w-[10%] text-center">Asset Age</th>
+              <th class="px-6 py-5 font-bold w-[10%] text-center">Status</th>
+              <th class="px-6 py-5 font-bold w-[14%]">Last Maintenance</th>
+              <th class="px-6 py-5 font-bold text-center w-[8%]">Action</th>
+            </tr>
+          </thead>
+          <tbody id="asset-table-body" class="text-sm text-gray-700 divide-y divide-gray-100">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="moveAssetModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[60] backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-xl overflow-hidden transform transition-all scale-95" id="move-asset-modal-box">
+      <div class="bg-indigo-500 px-6 py-4 flex justify-between items-center text-white">
+        <h3 class="font-bold text-lg flex items-center tracking-wide">
+            <i class='bx bx-qr-scan mr-2 text-xl'></i> Move Asset Position
+        </h3>
+        <button onclick="closeMoveAssetModal()" class="text-indigo-100 hover:text-white transition-colors">
+          <i class='bx bx-x text-2xl font-bold'></i>
+        </button>
+      </div>
+      
+      <div class="p-6">
+          <div class="mb-4">
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Scanner Barcode (Asset ID)</label>
+              <div id="reader" class="w-full bg-gray-900 rounded-xl overflow-hidden border-2 border-indigo-500 mb-3 min-h-[250px] flex items-center justify-center relative"></div>
+              <div class="flex justify-center gap-3 mb-4">
+                  <button type="button" onclick="startMoveScanner()" class="bg-indigo-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-indigo-600 transition-colors shadow-md font-bold flex items-center">
+                      <i class='bx bx-video mr-2 text-lg'></i> Start Scanner
+                  </button>
+                  <button type="button" onclick="stopMoveScanner()" class="bg-gray-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors shadow-md font-bold flex items-center">
+                      <i class='bx bx-video-off mr-2 text-lg'></i> Stop
+                  </button>
+              </div>
+          </div>
+
+          <div class="relative flex py-3 items-center">
+              <div class="flex-grow border-t border-gray-300"></div>
+              <span class="flex-shrink-0 mx-4 text-gray-400 text-xs font-bold uppercase tracking-wider">Asset Detail</span>
+              <div class="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Asset ID</label>
+                  <input type="text" id="move_asset_id" onchange="checkMoveAssetId()" placeholder="Type Asset ID..." class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-sm font-bold font-mono">
+              </div>
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine Name</label>
+                  <input type="text" id="move_asset_name" readonly class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 bg-gray-100 transition-colors text-sm font-bold">
+              </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">New Area</label>
+                <select id="move_new_area" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-sm font-bold bg-white">
+                    <option value="" disabled selected>Pilih Area Baru...</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">New Location</label>
+                <select id="move_new_location" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-sm font-bold bg-white">
+                    <option value="" disabled selected>Pilih Lokasi Baru...</option>
+                </select>
+            </div>
+        </div>
+
+          <div class="flex justify-end gap-3 border-t border-gray-100 pt-4 mt-2">
+              <button type="button" onclick="closeMoveAssetModal()" class="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors text-sm">Cancel</button>
+              <button type="button" onclick="submitMoveAsset()" class="px-5 py-2.5 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 shadow-md transition-colors flex items-center text-sm">
+                  <i class='bx bx-check mr-2 text-lg'></i> Save Position
+              </button>
+          </div>
+      </div>
+    </div>
+</div>
+
+<div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-[95%] sm:w-[450px] overflow-hidden transform transition-all scale-95" id="modal-box">
+      <div class="bg-gray-50 px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="font-bold text-gray-800 text-xl flex items-center">
+            <i class='bx bx-edit text-orange-500 mr-2 text-2xl'></i> Edit Asset Data
+        </h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 transition-colors">
+          <i class='bx bx-x text-3xl'></i>
+        </button>
+      </div>
+      
+      <div class="p-6 overflow-y-auto max-h-[60vh]">
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Machine Name</label>
+            <input type="text" id="modalItemName" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors text-base font-medium">
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Before Location</label>
+            <input type="text" id="modalItemBeforeLocation" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors text-base font-medium">
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Area</label>
+            <input type="text" id="modalItemArea" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors text-base font-medium">
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Location (Line)</label>
+            <input type="text" id="modalItemLocation" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors text-base font-medium">
+        </div>
+        <div class="mb-2">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Status</label>
+            <select id="modalItemStatus" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-700 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors text-base font-medium appearance-none cursor-pointer">
+                <option value="Running">Running</option>
+                <option value="Breakdown">Breakdown</option>
+                <option value="PM">PM (Preventive Maintenance)</option>
+                <option value="Idle">Idle</option>
+            </select>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+        <button onclick="deleteItem()" class="text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center border border-transparent hover:border-red-200">
+            <i class='bx bx-trash mr-1 text-lg'></i> Delete
+        </button>
+        <div class="flex gap-2">
+            <button onclick="closeModal()" class="px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-lg transition-colors">Cancel</button>
+            <button onclick="saveEdit()" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors">Save</button>
+        </div>
+      </div>
+    </div>
+</div>
+
+<!-- Modal Histori Placement -->
+<div id="historyPlacementModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[70]">
+    <div class="bg-white rounded-xl shadow-2xl w-[95%] sm:w-[600px] overflow-hidden transform transition-all scale-95" id="history-placement-box">
+        <div class="bg-gray-50 px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 text-xl flex items-center">
+                <i class='bx bx-history text-blue-500 mr-2 text-2xl'></i> Histori Asset Placement
+            </h3>
+            <button onclick="closeHistoryPlacementModal()" class="text-gray-400 hover:text-red-500 transition-colors">
+                <i class='bx bx-x text-3xl'></i>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[60vh]">
+            <input type="date" id="filterDatePlacement" class="mb-4 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" onchange="loadHistoryPlacement()">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-500">
+                        <th class="p-3">Tanggal</th>
+                        <th class="p-3">Mesin</th>
+                        <th class="p-3">Dari (Before)</th>
+                        <th class="p-3">Ke (Current)</th>
+                    </tr>
+                </thead>
+                <tbody id="historyPlacementBody">
+                    <tr><td colspan="4" class="text-center p-3 text-gray-400">Pilih tanggal untuk melihat histori</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Histori Maintenance -->
+<div id="historyMaintenanceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[70]">
+    <div class="bg-white rounded-xl shadow-2xl w-[95%] sm:w-[600px] overflow-hidden transform transition-all scale-95" id="history-maintenance-box">
+        <div class="bg-gray-50 px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="font-bold text-gray-800 text-xl flex items-center">
+                <i class='bx bx-wrench text-emerald-500 mr-2 text-2xl'></i> Histori Maintenance
+            </h3>
+            <button onclick="closeHistoryMaintenanceModal()" class="text-gray-400 hover:text-red-500 transition-colors">
+                <i class='bx bx-x text-3xl'></i>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[60vh]">
+            <input type="date" id="filterDateMaintenance" class="mb-4 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" onchange="loadHistoryMaintenance()">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-500">
+                        <th class="p-3">Tanggal</th>
+                        <th class="p-3">Mesin</th>
+                        <th class="p-3">Jenis</th>
+                        <th class="p-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="historyMaintenanceBody">
+                    <tr><td colspan="4" class="text-center p-3 text-gray-400">Pilih tanggal untuk melihat histori</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fungsi ini untuk membuka modal histori penempatan asset dan mengatur tinggi filter ke hari ini
+    function openHistoryPlacementModal() {
+        const modal = document.getElementById('historyPlacementModal');
+        const box = document.getElementById('history-placement-box');
+        document.getElementById('filterDatePlacement').value = new Date().toISOString().split('T')[0];
+        loadHistoryPlacement();
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+    
+    // Fungsi ini untuk menutup modal histori penempatan asset dengan animasi efek menyusut 
+    function closeHistoryPlacementModal() {
+        const modal = document.getElementById('historyPlacementModal');
+        const box = document.getElementById('history-placement-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+    
+    // Fungsi ini untuk memuat dan menampilkan data histori perpindahan asset berdasarkan tanggal filter yang dipilih
+    function loadHistoryPlacement() {
+        const date = document.getElementById('filterDatePlacement').value;
+        const tbody = document.getElementById('historyPlacementBody');
+        const filtered = assetData.filter(a => a.move_date && a.move_date.startsWith(date));
+        
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-3 text-gray-400">Tidak ada data perpindahan di tanggal ini</td></tr>';
+        } else {
+            tbody.innerHTML = filtered.map(a => `<tr class="border-b"><td class="p-3">${a.move_date || '-'}</td><td class="p-3 font-semibold">${a.machine_name || '-'}</td><td class="p-3">${a.before_location || '-'}</td><td class="p-3">${a.location || '-'}</td></tr>`).join('');
+        }
+    }
+
+    // Fungsi ini untuk membuka modal histori maintenance dan mengatur setelan tanggal fitur ke hari ini
+    function openHistoryMaintenanceModal() {
+        const modal = document.getElementById('historyMaintenanceModal');
+        const box = document.getElementById('history-maintenance-box');
+        document.getElementById('filterDateMaintenance').value = new Date().toISOString().split('T')[0];
+        loadHistoryMaintenance();
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+    
+    // Fungsi ini untuk menutup modal histori maintenance dengan animasi efek menyusut 
+    function closeHistoryMaintenanceModal() {
+        const modal = document.getElementById('historyMaintenanceModal');
+        const box = document.getElementById('history-maintenance-box');
+        box.classList.remove('scale-100'); box.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+    
+    // Fungsi ini untuk memuat dan memfilter tabel data histori work orders (maintenance) berdasarkan tanggal yang dipilih pada input filter
+    function loadHistoryMaintenance() {
+        const dateVal = document.getElementById('filterDateMaintenance').value;
+        const tbody = document.getElementById('historyMaintenanceBody');
+        
+        if (!dateVal) return;
+        const filterDate = new Date(dateVal);
+
+        const filtered = workOrders.filter(wo => {
+            // Gunakan target_date (Preventive) atau request_time (Corrective)
+            const targetDateToCompare = wo.target_date ? new Date(wo.target_date) : new Date(wo.request_time);
+            
+            // Bandingkan secara spesifik Tahun, Bulan, dan Tanggal untuk menghindari Miss Timezone
+            if (isNaN(targetDateToCompare)) return false;
+            return targetDateToCompare.getFullYear() === filterDate.getFullYear() && 
+                   targetDateToCompare.getMonth() === filterDate.getMonth() && 
+                   targetDateToCompare.getDate() === filterDate.getDate();
+        });
+        
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-400">Tidak ada data maintenance di tanggal ini</td></tr>';
+        } else {
+            tbody.innerHTML = filtered.map(w => {
+                const badgeClass = w.type === 'CORRECTIVE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700';
+                const dateToDisplay = w.target_date ? new Date(w.target_date) : new Date(w.request_time);
+                const formattedDate = `${String(dateToDisplay.getDate()).padStart(2, '0')}/${String(dateToDisplay.getMonth() + 1).padStart(2, '0')}/${dateToDisplay.getFullYear()}`;
+                
+                return `<tr class="border-b hover:bg-gray-50 transition-colors">
+                    <td class="p-3 font-mono text-gray-600">${formattedDate}</td>
+                    <td class="p-3 font-semibold text-gray-800">${w.machine_name || w.asset_id || '-'}</td>
+                    <td class="p-3"><span class="px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase ${badgeClass}">${w.type}</span></td>
+                    <td class="p-3"><span class="bg-gray-100 border border-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase">${w.status}</span></td>
+                </tr>`;
+            }).join('');
+        }
+    }
+
+    let assetData = [];
+    let workOrders = [];
+    let moveHtml5QrCode;
+    let isMoveProcessingQR = false;
+
+    // Membuka pop-up modal yang digunakan untuk mengubah/memindahkan lokasi asset.
+    function openMoveAssetModal() {
+        const modal = document.getElementById('moveAssetModal');
+        const box = document.getElementById('move-asset-modal-box');
+        document.getElementById('move_asset_id').value = '';
+        document.getElementById('move_asset_name').value = '';
+        document.getElementById('move_new_location').value = '';
+        document.getElementById('move_new_area').value = '';
+        modal.classList.remove('hidden');
+        setTimeout(() => { box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    }
+
+    // Menutup modal pemindahan asset dan memastikan kamera pemindaian QR Scanner dimatikan.
+    function closeMoveAssetModal() {
+        const modal = document.getElementById('moveAssetModal');
+        const box = document.getElementById('move-asset-modal-box');
+        box.classList.remove('scale-100');
+        box.classList.add('scale-95');
+        stopMoveScanner();
+        setTimeout(() => { modal.classList.add('hidden'); }, 150);
+    }
+
+    // Mengaktifkan kamera perangkat untuk memindai QR code / Barcode ID Asset yang akan dipindahkan
+    function startMoveScanner() {
+        if (!moveHtml5QrCode) {
+            moveHtml5QrCode = new Html5Qrcode("reader");
+        }
+        if (moveHtml5QrCode.isScanning) return; 
+        isMoveProcessingQR = false; 
+
+        moveHtml5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                if (isMoveProcessingQR) return; 
+                isMoveProcessingQR = true; 
+
+                document.getElementById('move_asset_id').value = decodedText;
+                checkMoveAssetId();
+                stopMoveScanner();
+                Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'QR Code Terbaca!' });
+            },
+            (errorMessage) => { /* Abaikan error */ }
+        ).catch((err) => {
+            Swal.fire('Error', 'Kamera tidak dapat diakses', 'error');
+        });
+    }
+
+    // Mematikan proses pemindaian dari kamera secara paksa 
+    function stopMoveScanner() {
+        if (moveHtml5QrCode && moveHtml5QrCode.isScanning) {
+            moveHtml5QrCode.stop().then(() => {
+                isMoveProcessingQR = false; 
+            }).catch(err => {
+                console.error("Stop failed", err);
+            });
+        }
+    }
+
+    // Memvalidasi ID Asset yang dimasikkan atau dipindai, lalu menampilkan nama mesin yang sesuai secara otomatis 
+    function checkMoveAssetId() {
+        const assetInput = document.getElementById('move_asset_id').value.trim().toLowerCase();
+        const nameInput = document.getElementById('move_asset_name');
+        
+        if (!assetInput) {
+            nameInput.value = "";
+            return;
+        }
+
+        const asset = assetData.find(a => 
+            (a.nomor_asset && String(a.nomor_asset).trim().toLowerCase() === assetInput) || 
+            (a.machine_id && String(a.machine_id).trim().toLowerCase() === assetInput)
+        );
+        
+        if (asset) {
+            document.getElementById('move_asset_id').value = asset.nomor_asset || assetInput;
+            nameInput.value = asset.machine_name || "Tanpa Nama";
+        } else {
+            nameInput.value = "Asset Not Found";
+        }
+    }
+
+    // Mengirim POST data lokasi atau area baru dari asset yang dipindahkan ke server database
+    async function submitMoveAsset() {
+        const id = document.getElementById('move_asset_id').value.trim();
+        const newLoc = document.getElementById('move_new_location').value.trim();
+        const newArea = document.getElementById('move_new_area').value.trim();
+        const nameInput = document.getElementById('move_asset_name').value;
+
+        if (!id || nameInput === "Asset Not Found" || nameInput === "") {
+            Swal.fire('Perhatian', 'Asset ID tidak valid!', 'warning');
+            return;
+        }
+        if (!newLoc && !newArea) {
+            Swal.fire('Perhatian', 'Harap isi minimal Lokasi atau Area Baru!', 'warning');
+            return;
+        }
+
+        try {
+            const asset = assetData.find(a => a.nomor_asset === id || a.machine_id === id);
+            
+            const currentFullLocation = (asset.area ? asset.area + ' ' : '') + (asset.location || '');
+            const payload = {
+                ...asset, 
+                nomor_asset: id,
+                location: newLoc || asset.location,
+                area: newArea || asset.area,
+                before_location: currentFullLocation || '-',
+                move_date: new Date().toISOString().split('T')[0]
+            };
+
+            const res = await fetch('/api/assets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                Swal.fire('Berhasil', 'Posisi Asset berhasil dipindahkan', 'success');
+                closeMoveAssetModal();
+                fetchData(); 
+            } else {
+                Swal.fire('Gagal', 'Gagal memindahkan asset', 'error');
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Koneksi ke server gagal', 'error');
+        }
+    }
+    let currentEditId = null;
+
+// Mengambil data master asset dan work order dari backend sekaligus memperbarui opsi dropdown untuk filter pencarian
+    async function fetchData() {
+        try {
+            const [assetRes, woRes] = await Promise.all([
+                fetch('/api/assets'),
+                fetch('/api/workorders')
+            ]);
+            if(assetRes.ok) assetData = await assetRes.json();
+            if(woRes.ok) workOrders = await woRes.json();
+
+            const areaSet = new Set(), locationSet = new Set();
+            assetData.forEach(item => {
+                if(item.area) areaSet.add(item.area);
+                if(item.location) locationSet.add(item.location);
+            });
+            
+            const filterArea = document.getElementById('filterArea');
+            filterArea.innerHTML = '<option value="">All Area</option>';
+            areaSet.forEach(area => { filterArea.innerHTML += `<option value="${area}">${area}</option>`; });
+            
+            const filterLocation = document.getElementById('filterLocation');
+            filterLocation.innerHTML = '<option value="">All Location</option>';
+            locationSet.forEach(loc => { filterLocation.innerHTML += `<option value="${loc}">${loc}</option>`; });
+
+            const moveAreaSelect = document.getElementById('move_new_area');
+            const moveLocationSelect = document.getElementById('move_new_location');
+
+            moveAreaSelect.innerHTML = '<option value="" disabled selected>Pilih Area Baru...</option>';
+            areaSet.forEach(area => { moveAreaSelect.innerHTML += `<option value="${area}">${area}</option>`; });
+
+            moveLocationSelect.innerHTML = '<option value="" disabled selected>Pilih Lokasi Baru...</option>';
+            locationSet.forEach(loc => { moveLocationSelect.innerHTML += `<option value="${loc}">${loc}</option>`; });
+
+            renderTable();
+        } catch (e) { console.error("Gagal mengambil data dari backend:", e); }
+    }
+
+// Menghitung selisih tahun antara tanggal pembelian asset dengan hari ini untuk mendapatkan umur asset
+    function calculateAge(purchaseDateString) {
+        if (!purchaseDateString) return "-";
+        const today = new Date(); const pDate = new Date(purchaseDateString);
+        let age = today.getFullYear() - pDate.getFullYear();
+        const m = today.getMonth() - pDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < pDate.getDate())) { age--; }
+        return age >= 0 ? age + " Years" : "-";
+    }
+
+    // Mengalkulasi dan memperbarui angka pada kartu statistik atas total assets, running, breakdown , under PM)
+    function updateSummaryCards(filteredData) {
+        let total = filteredData.length;
+        let running = 0, breakdown = 0, pm = 0;
+
+        filteredData.forEach(item => {
+            const assetWOs = workOrders.filter(wo => wo.asset_id === item.nomor_asset && wo.status !== 'COMPLETED');
+            if(assetWOs.some(wo => wo.type === 'CORRECTIVE')) breakdown++;
+            else if(assetWOs.some(wo => wo.type === 'PREVENTIVE')) pm++;
+            else running++;
+        });
+
+        document.getElementById('card-total').innerText = total;
+        document.getElementById('card-running').innerText = running;
+        document.getElementById('card-breakdown').innerText = breakdown;
+        document.getElementById('card-pm').innerText = pm;
+    }
+
+    // Membangun baris data asset ke dalam tabel HTML berdasaekan parameter pencarian dan filter yang sedang aktif
+    function renderTable() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filterLocation = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : '';
+        const filterArea = document.getElementById('filterArea') ? document.getElementById('filterArea').value : '';
+        const filterStatus = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : '';
+
+        const tbody = document.getElementById('asset-table-body');
+        tbody.innerHTML = ''; 
+        
+        const filteredData = assetData.filter(item => {
+            const matchSearch = (item.nomor_asset || '').toLowerCase().includes(query) ||
+                                (item.machine_name || '').toLowerCase().includes(query) ||
+                                (item.location || '').toLowerCase().includes(query) ||
+                                (item.area || '').toLowerCase().includes(query);
+            
+            const matchLocation = filterLocation === '' || item.location === filterLocation;
+            const matchArea = filterArea === '' || item.area === filterArea;
+
+            let currentStatus = 'Running';
+            const assetWOs = workOrders.filter(wo => wo.asset_id === item.nomor_asset);
+            const hasOpenCorrective = assetWOs.some(wo => wo.type === 'CORRECTIVE' && wo.status !== 'COMPLETED');
+            const hasOpenPreventive = assetWOs.some(wo => wo.type === 'PREVENTIVE' && wo.status !== 'COMPLETED');
+            if (hasOpenCorrective) currentStatus = 'Breakdown';
+            else if (hasOpenPreventive) currentStatus = 'PM';
+
+            const matchStatus = filterStatus === '' || currentStatus === filterStatus;
+
+            return matchSearch && matchLocation && matchArea && matchStatus;
+        });
+
+        filteredData.sort((a, b) => {
+            const locA = (a.location || '').toLowerCase();
+            const locB = (b.location || '').toLowerCase();
+            if (locA !== locB) return locA.localeCompare(locB);
+
+            const dateA = a.purchase_date ? new Date(a.purchase_date).getTime() : 0;
+            const dateB = b.purchase_date ? new Date(b.purchase_date).getTime() : 0;
+            if (dateA !== dateB) return dateA - dateB;
+
+            const now = new Date();
+            const isMaintThisMonth = (item) => {
+                return workOrders.some(wo => 
+                    wo.asset_id === item.nomor_asset && 
+                    wo.status === 'COMPLETED' &&
+                    (wo.type === 'PREVENTIVE' || wo.type === 'CORRECTIVE') &&
+                    new Date(wo.target_date).getMonth() === now.getMonth() &&
+                    new Date(wo.target_date).getFullYear() === now.getFullYear()
+                ) ? 1 : 0;
+            };
+            return isMaintThisMonth(b) - isMaintThisMonth(a);
+        });
+
+        updateSummaryCards(filteredData); // Update summary based on search
+
+        if(filteredData.length === 0) { 
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-gray-400 text-base">No asset data found.</td></tr>`; 
+            return; 
+        }
+
+        filteredData.forEach(item => {
+            let currentStatus = 'Running';
+            let lastMaintenance = '-';
+            const assetWOs = workOrders.filter(wo => wo.asset_id === item.nomor_asset);
+            const hasOpenCorrective = assetWOs.some(wo => wo.type === 'CORRECTIVE' && wo.status !== 'COMPLETED');
+            const hasOpenPreventive = assetWOs.some(wo => wo.type === 'PREVENTIVE' && wo.status !== 'COMPLETED');
+
+            if (hasOpenCorrective) currentStatus = 'Breakdown';
+            else if (hasOpenPreventive) currentStatus = 'PM';
+
+            const completedWOs = assetWOs.filter(wo => wo.status === 'COMPLETED');
+            if(completedWOs.length > 0) {
+                completedWOs.sort((a,b) => new Date(b.target_date) - new Date(a.target_date));
+                lastMaintenance = new Date(completedWOs[0].target_date).toISOString().split('T')[0];
+            }
+
+            let statusClass = ''; let statusIcon = '';
+            switch(currentStatus) {
+                case 'Running': statusClass = 'bg-emerald-100 text-emerald-700'; statusIcon = 'bx-check-circle'; break;
+                case 'Breakdown': statusClass = 'bg-red-100 text-red-700'; statusIcon = 'bx-error-circle'; break;
+                case 'PM': statusClass = 'bg-blue-100 text-blue-700'; statusIcon = 'bx-wrench'; break;
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 transition-colors";
+            tr.innerHTML = `
+                <td class="px-6 py-5 font-mono font-medium text-gray-600 text-sm">${item.nomor_asset || '-'}</td>
+                <td class="px-6 py-5 font-semibold text-gray-800 flex items-center text-sm md:text-base"><i class='bx bx-cube-alt text-orange-500 mr-3 text-2xl'></i> ${item.machine_name || '-'}</td>
+                <td class="px-6 py-5 font-medium text-gray-500 text-sm md:text-base"><i class='bx bx-history mr-1.5 text-gray-400 text-lg'></i>${item.before_location || '-'}</td>
+                <td class="px-6 py-5 font-medium text-gray-800 text-sm md:text-base">
+                    <div class="flex flex-col">
+                        <span><i class='bx bx-map-pin mr-1.5 text-green-500 text-lg'></i>${item.area ? item.area + ' ' : ''}${item.location || '-'}</span>
+                        <span class="text-xs text-gray-400 mt-1 ml-6"><i class='bx bx-calendar mr-1'></i>${item.move_date || '-'}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-5 text-center"><span class="bg-gray-100 text-gray-700 font-bold px-3 py-1.5 rounded-md text-sm border border-gray-200">${calculateAge(item.purchase_date)}</span></td>
+                <td class="px-6 py-5 text-center"><span class="${statusClass} font-bold px-3 py-1.5 rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center w-fit mx-auto"><i class='bx ${statusIcon} mr-1 text-sm'></i> ${currentStatus}</span></td>
+                <td class="px-6 py-5 font-mono text-gray-500 text-sm">${lastMaintenance}</td>
+                <td class="px-6 py-5 text-center">
+                    <button onclick="openEditModal('${item.machine_id}')" class="text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 transition-all text-base"><i class='bx bx-edit-alt'></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Membuka pop up modal edit data untuk memodifikasi lokasi dan area dari asset yang dipilih.
+    function openEditModal(id) {
+        const item = assetData.find(d => d.machine_id === id);
+        if(!item) return;
+
+        currentEditId = id;
+        const nameInput = document.getElementById('modalItemName');
+        nameInput.value = item.machine_name || '-'; nameInput.disabled = true; nameInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+
+        const beforeLocInput = document.getElementById('modalItemBeforeLocation');
+        beforeLocInput.value = item.before_location || '-'; beforeLocInput.disabled = true; beforeLocInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+
+        document.getElementById('modalItemArea').value = item.area || '';
+        document.getElementById('modalItemLocation').value = item.location || '';
+        
+        const statusSelect = document.getElementById('modalItemStatus');
+        statusSelect.disabled = true; statusSelect.classList.add('bg-gray-100', 'cursor-not-allowed');
+        
+        const assetWOs = workOrders.filter(wo => wo.asset_id === item.nomor_asset && wo.status !== 'COMPLETED');
+        if(assetWOs.some(wo => wo.type === 'CORRECTIVE')) statusSelect.value = 'Breakdown';
+        else if(assetWOs.some(wo => wo.type === 'PREVENTIVE')) statusSelect.value = 'PM';
+        else statusSelect.value = 'Running';
+
+        const modal = document.getElementById('editModal');
+        const modalBox = document.getElementById('modal-box');
+        modal.classList.remove('hidden');
+        setTimeout(() => { modalBox.classList.remove('scale-95'); modalBox.classList.add('scale-100'); }, 10);
+    }
+
+    // Menutup pop up modal edit data asset 
+    function closeModal() {
+        const modal = document.getElementById('editModal');
+        const modalBox = document.getElementById('modal-box');
+        modalBox.classList.remove('scale-100'); modalBox.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); currentEditId = null; }, 150);
+    }
+
+    // Menyimpan pembaruan data area atau lokasi dari model edit langsung ke database
+    async function saveEdit() {
+        if(currentEditId === null) return;
+        const item = assetData.find(d => d.machine_id === currentEditId);
+        
+        const currentFullLocation = (item.area ? item.area + ' ' : '') + (item.location || '');
+        item.before_location = currentFullLocation || '-';
+        item.move_date = new Date().toISOString().split('T')[0];
+        
+        item.area = document.getElementById('modalItemArea').value;
+        item.location = document.getElementById('modalItemLocation').value;
+        
+        try {
+            const res = await fetch('/api/assets', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item)
+            });
+            if(res.ok) { await fetchData(); closeModal(); }
+            else { alert("Gagal menyimpan perubahan lokasi ke database."); }
+        } catch (e) { alert("Gagal menyimpan perubahan lokasi ke database."); }
+    }
+
+    // Menghapus data asset secara permanen dari database setelah mendapat konfirmasi dari pengguna.
+    async function deleteItem() {
+        if(currentEditId === null) return;
+        if(confirm("Hapus asset ini secara permanen dari Database Utama (PostgreSQL)?")) {
+            const item = assetData.find(d => d.machine_id === currentEditId);
+            try {
+                await fetch('/api/assets/' + item.id, { method: 'DELETE' });
+                await fetchData(); closeModal();
+            } catch (e) { alert("Gagal menghapus data."); }
+        }
+    }
+
+    // Mengatur tampilan buka tutup submenu pda navigasi sidebar kiri
+    function toggleSubmenu(id, element) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('sidebar-collapsed')) { sidebar.classList.remove('sidebar-collapsed'); }
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) { submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)'; } 
+      else { submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; }
+    }
+
+    // Fungsi ini untuk memanggil dan menyuntikan template sidebar.html ke dalam dokumen secara dinamis menggunakan fetch API
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    // Fungsi ini untuk mendeteksi URL aktif saat ini dan mengaplikasikan class styling penanda halaman aktif pada link navigasi sidebar terkait 
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'AssetManagement.html' && link.getAttribute('href') === 'AssetManagement.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+    // Fungsi ini untuk inisialisasi awal eksekusi script dan pemuatan identitas user dari storage sesaat setelah seluruh DOM selesai diunduh
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      
+      // Jika data ditemukan, masukkan ke dalam HTML
+      if (userData) {
+          // Menampilkan Nama
+          document.getElementById('header-user-name').innerText = userData.name;
+          
+          // Menampilkan Role (jika kosong, default ke 'User')
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          
+          // Menampilkan Foto Profil
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+          
+          // Pengecekan Role Akses
+          const allowedRoles = ['Admin Asset', 'Admin Sparepart', 'Admin Developer'];
+          if (!allowedRoles.includes(userData.role)) {
+              document.querySelector('main').style.filter = 'blur(5px)';
+              document.querySelector('main').style.pointerEvents = 'none';
+              
+              Swal.fire({
+                  icon: 'error',
+                  title: 'Akses Ditolak',
+                  text: 'Role akses anda bukan Admin Asset, Admin Sparepart, atau Admin Developer.',
+                  allowOutsideClick: false,
+                  showConfirmButton: false,
+                  backdrop: false // Mematikan overlay bawaan Swal agar sidebar tetap bisa diklik
+              });
+              return;
+          }
+      }
+      fetchData(); 
+    });
+
+    // Mengubah mode tampilan sidebar melebar atau menyusut untuk memaksimalkan ruang layar
+</script>
+<script src="gtranslate.js"></script>
+<script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

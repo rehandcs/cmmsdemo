@@ -1,0 +1,195 @@
+<!-- sidebar.html -->
+<!-- Penambahan class "sidebar-collapsed" di akhir agar mengecil secara default -->
+<!-- sidebar.html -->
+<!-- Penambahan "h-screen" agar warna putih full sampai bawah -->
+<style>
+  #sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: 15rem;
+    transform: translateX(0);
+    transition: width 0.3s ease;
+  }
+
+  @media (min-width: 768px) {
+    #sidebar {
+      position: relative;
+    }
+  }
+
+  @media (max-width: 767px) {
+    #sidebar:not(.sidebar-open) {
+      transform: translateX(-100%);
+    }
+  }
+</style>
+<aside id="sidebar" class="h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0">
+  <div
+    class="h-14 flex items-center px-4 border-b border-gray-200 bg-white header-sidebar justify-between md:justify-start">
+    <div class="flex items-center">
+      <i onclick="toggleSidebar()"
+        class='bx bx-menu text-2xl text-gray-800 hover:text-orange-500 cursor-pointer transition-colors mr-3 hidden md:block'></i>
+      <img src="https://res.cloudinary.com/bfvxjarw/image/upload/v1787793240/zzbzwaygnskgion7kslx.jpg" class="w-22"
+        style="width: 50px; height: auto;" alt="Logo" />
+    </div>
+    <!-- Tombol Tutup (Hanya tampil di Mobile) -->
+    <i onclick="toggleSidebar()" class='bx bx-x text-2xl text-gray-800 hover:text-red-500 cursor-pointer md:hidden'></i>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2 text-sm min-h-0" id="sidebar-nav">
+    <!-- Copass semua menu navigasi Anda di sini -->
+    <a href="Index.html"
+      class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200">
+      <i class='bx bx-home text-xl mr-3'></i> <span class="sidebar-text">Home</span>
+    </a>
+    <a href="Schedule.html"
+      class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-calendar text-xl mr-3'></i> <span class="sidebar-text">Schedule</span>
+    </a>
+
+    <div class="mt-2">
+      <div
+        class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger"
+        onclick="toggleSubmenu('submenu-workorder', this)">
+        <div class="flex items-center"><i class='bx bx-book text-xl mr-3'></i> <span class="sidebar-text">Work
+            Order</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workorder" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="WorkOrder.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-desktop text-lg mr-3'></i> <span class="sidebar-text">Live Dashboard</span>
+        </a>
+        <a href="TicketWO.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-task text-lg mr-3'></i> <span class="sidebar-text">Ticket Order</span>
+        </a>
+        <a href="WorkOrderHistory.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-history text-lg mr-3'></i> <span class="sidebar-text">WO History</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div
+        class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger"
+        onclick="toggleSubmenu('submenu-maintenance', this)">
+        <div class="flex items-center"><i class='bx bx-wrench text-xl mr-3'></i> <span
+            class="sidebar-text">Maintenance</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-maintenance" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="Preventive.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-calendar-check text-lg mr-3'></i> <span class="sidebar-text">Preventive</span>
+        </a>
+        <a href="Corrective.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-error-circle text-lg mr-3'></i> <span class="sidebar-text">Corrective</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div
+        class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger"
+        onclick="toggleSubmenu('submenu-workshop', this)">
+        <div class="flex items-center"><i class='bx bx-building text-xl mr-3'></i> <span class="sidebar-text">Supply and
+            Placement</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-workshop" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="Pickup.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cog text-lg mr-3'></i> <span class="sidebar-text">Pick Up Sparepart</span>
+        </a>
+        <a href="SparepartArrival.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-archive text-lg mr-3'></i> <span class="sidebar-text">Sparepart Arrival</span>
+        </a>
+        <a href="AssetPlacement.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-cube text-lg mr-3'></i> <span class="sidebar-text">Asset Placement</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- PERBAIKAN: Penulisan class diperbaiki -->
+    <div class="mt-2">
+      <div
+        class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger"
+        onclick="toggleSubmenu('submenu-inventory', this)">
+        <div class="flex items-center"><i class='bx bx-package text-xl mr-3'></i> <span
+            class="sidebar-text">Inventory</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-inventory" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="UsageLog.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-history text-lg mr-3'></i> <span class="sidebar-text">Sparepart Management</span>
+        </a>
+        <a href="AssetManagement.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-spreadsheet text-lg mr-3'></i> <span class="sidebar-text">Asset Management</span>
+        </a>
+        <a href="DatabaseMaster.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-data text-lg mr-3'></i> <span class="sidebar-text">Master Database</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="mechanic.html"
+      class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-refresh text-lg mr-3'></i> <span class="sidebar-text">Mechanic</span>
+    </a>
+
+    <div class="mt-2">
+      <div
+        class="flex justify-between items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer transition-colors duration-200 submenu-trigger"
+        onclick="toggleSubmenu('submenu-reports', this)">
+        <div class="flex items-center"><i class='bx bx-pie-chart-alt-2 text-xl mr-3'></i> <span
+            class="sidebar-text">Reports Analysis</span></div>
+        <i class='bx bx-chevron-down text-gray-400 dropdown-icon transition-transform'></i>
+      </div>
+      <div id="submenu-reports" class="pl-9 pr-2 py-1 space-y-1 bg-orange-50/50 rounded-lg mt-1 hidden">
+        <a href="TrackingAssets.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-radar text-lg mr-3'></i> <span class="sidebar-text">Asset History</span>
+        </a>
+        <a href="mttrmtbdanalysis.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-bar-chart text-lg mr-3'></i> <span class="sidebar-text">MTTR and MTBF Analysis</span>
+        </a>
+        <a href="TrackingSpareparts.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-folder text-lg mr-3'></i> <span class="sidebar-text">Spareparts Usage</span>
+        </a>
+        <a href="costanalysis.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-pie-chart-alt text-lg mr-3'></i> <span class="sidebar-text">Cost Analysis</span>
+        </a>
+        <a href="mechanicperformance.html"
+          class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-orange-100 rounded-md transition-colors duration-200">
+          <i class='bx bx-line-chart text-lg mr-3'></i> <span class="sidebar-text">Mechanic Analysis</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="UserSettings.html"
+      class="sidebar-link flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md transition-colors duration-200 mt-2">
+      <i class='bx bx-user text-xl mr-3'></i> <span class="sidebar-text">User Settings</span>
+    </a>
+
+    <!-- Tombol Logout -->
+    <div class="pt-4 mt-auto border-t border-gray-100 pb-2">
+      <a href="javascript:void(0)" onclick="handleLogout()"
+        class="sidebar-link flex items-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-md transition-colors duration-200">
+        <i class='bx bx-log-out text-xl mr-3'></i> <span class="sidebar-text font-medium">Logout</span>
+      </a>
+    </div>
+
+  </nav>
+</aside>

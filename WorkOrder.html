@@ -1,0 +1,437 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Order Dashboard - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        /* Transisi halus untuk sidebar */
+    #sidebar { transition: width 0.3s ease; }
+    
+    /* Class saat ditutup (collapsed) */
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    
+    /* Sembunyikan submenu saat sidebar ditutup agar lebih rapi */
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+    .popup {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        backdrop-filter: blur(4px);
+    }
+    .popup-content {
+        width: 80vw;
+        height: 80vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        text-align: center;
+        padding: 0;
+        border-radius: 1rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s ease-in-out;
+        transform: scale(0.95);
+        border-width: 8px;
+        border-style: solid;
+        overflow: hidden;
+        background-color: #fff;
+    }
+    .popup.show .popup-content {
+        transform: scale(1);
+    }
+    .issue-box-header {
+        padding: 2.5rem 0;
+        margin-top: 0;
+        font-size: 5rem;
+        font-weight: 900;
+        color: white;
+    }
+    .status-row {
+        padding: 2rem 0;
+        font-size: 4rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .details-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-grow: 1;
+        width: 100%;
+        border-top: 4px solid;
+        flex-direction: column;
+    }
+    .details-value {
+        font-size: 5rem;
+        font-weight: 900;
+        color: #1f2937;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-x-auto relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+    <main class="flex-1 overflow-y-auto bg-gray-100 relative">
+        <div id="main-dashboard" class="p-6 h-full flex flex-col">
+            <div class="flex justify-between items-center border-b pb-4 shrink-0 mb-6">
+              <div>
+                <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Work Order Live Dashboard</h1>
+                <p class="text-sm text-gray-500 mt-1">Monitor all active machine repairs and maintenance issues in real-time.</p>
+              </div>
+            </div>
+            
+            <div class="bg-white shadow-xl rounded-xl overflow-x-auto border border-gray-200 flex-1">
+                <table class="w-full table-auto border-collapse">
+                    <thead>
+                        <tr class="bg-[#243141] text-white text-center text-lg uppercase tracking-widest font-bold">
+                            <th class="px-6 py-5 w-[10%]">ID</th>
+                            <th class="px-6 py-5 text-left w-[20%]">Asset / Machine Name</th>
+                            <th class="px-6 py-5 w-[15%]">Location</th>
+                            <th class="px-6 py-5 w-[10%]">Line</th>
+                            <th class="px-6 py-5 w-[10%]">Type</th>
+                            <th class="px-6 py-5 w-[10%]">Status</th>
+                            <th class="px-6 py-5 w-[15%]">Report Time</th>
+                            <th class="px-6 py-5 w-[10%] text-red-400">Downtime</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="text-xl text-center">
+                  
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="popup" class="popup">
+        <div id="popup-content" class="popup-content border-red-500">
+            <div class="issue-box-header bg-red-500 text-white">
+                <p class="font-extrabold uppercase">CORRECTIVE WO</p>
+            </div>
+            <div class="status-row text-red-600">
+                NEW TICKET OPENED
+            </div>
+            <div class="details-row border-t-4" style="border-top-color: #ef4444;">
+                <div class="details-box">
+                    <p class="details-value">Mesin Molding 01</p>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+
+<script>
+    function toggleSubmenu(id, element) {
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+
+    const currentDateElement = document.getElementById('current-date');
+    const currentTimeElement = document.getElementById('current-time');
+
+    function parseWibDate(value) {
+        if (!value || value === '-') return null;
+        if (value instanceof Date) return value;
+
+        const text = String(value).trim();
+        const dateOnlyMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        const datetimeMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2}):(\d{1,2})$/);
+
+        if (dateOnlyMatch) {
+            const [, year, month, day] = dateOnlyMatch;
+            return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0) - 7 * 60 * 60 * 1000);
+        }
+
+        if (datetimeMatch) {
+            const [, year, month, day, hour, minute, second] = datetimeMatch;
+            return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)) - 7 * 60 * 60 * 1000);
+        }
+
+        const d = new Date(text);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function getWibDateTimeString(date = new Date()) {
+        const actual = date instanceof Date ? date : parseWibDate(date);
+        if (!actual) return '-';
+
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+
+        const values = {};
+        formatter.formatToParts(actual).forEach(part => {
+            if (part.type !== 'literal') {
+                values[part.type] = part.value;
+            }
+        });
+
+        return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+    }
+
+    function updateDateTime() {
+        const now = new Date();
+        const wib = getWibDateTimeString(now);
+        const [datePart, timePart] = wib.split(' ');
+
+        if(currentDateElement) currentDateElement.innerText = datePart;
+        if(currentTimeElement) currentTimeElement.innerText = timePart;
+    }
+
+    function getArea(assetId) {
+        if (!assetId) return "Area Produksi";
+        const id = assetId.toUpperCase();
+        if (id.includes("CNC")) return "Area Machining / CNC";
+        if (id.includes("MOL") || id.includes("MOLDING")) return "Area Molding";
+        if (id.includes("PCK") || id.includes("PACK")) return "Area Packaging";
+        return "Area Produksi"; 
+    }
+
+    // Fungsi update stopwatch berjalan setiap detik
+    function updateStopwatches() {
+        const watches = document.querySelectorAll('.stopwatch');
+        const now = new Date();
+        watches.forEach(watch => {
+            const startStr = watch.getAttribute('data-start');
+            if (!startStr) return;
+            const startTime = new Date(startStr);
+            if (isNaN(startTime.getTime())) return;
+
+            let diffMs = now - startTime;
+            if (diffMs < 0) diffMs = 0; // Mencegah waktu negatif akibat timezone
+
+            let totalSeconds = Math.floor(diffMs / 1000);
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let seconds = totalSeconds % 60;
+
+            watch.innerText = `${hours} h ${minutes} m ${seconds} s`;
+        });
+    }
+
+    async function loadLiveDashboard() {
+      try {
+        const [woRes, assetsRes] = await Promise.all([
+            fetch('/api/workorders'),
+            fetch('/api/assets').catch(() => null) 
+        ]);
+
+        const data = await woRes.json();
+        
+        let assetsData = [];
+        if (assetsRes && assetsRes.ok) {
+            assetsData = await assetsRes.json();
+        }
+
+        const assetMap = {};
+        assetsData.forEach(a => {
+            if (a.nomor_asset) assetMap[String(a.nomor_asset).trim()] = a;
+            if (a.machine_id) assetMap[String(a.machine_id).trim()] = a;
+        });
+
+        const tableBody = document.getElementById('table-body');
+        tableBody.innerHTML = ''; 
+
+        const today = new Date();
+
+        data.forEach(wo => {
+          // MODIFIKASI: Menghilangkan baris jika status COMPLETED atau CLOSED
+          if(wo.status && (wo.status.toUpperCase() === 'COMPLETED' || wo.status.toUpperCase() === 'CLOSED')) return; 
+
+          const dateToUse = wo.target_date || wo.request_time;
+          if(!dateToUse) return;
+          
+          const woDate = new Date(dateToUse);
+          const isToday = woDate.getDate() === today.getDate() && 
+                          woDate.getMonth() === today.getMonth() && 
+                          woDate.getFullYear() === today.getFullYear();
+          
+          if(!isToday) return; 
+
+          const isCorrective = wo.type === 'CORRECTIVE';
+          const rowBg = isCorrective ? 'bg-[#ef4444]' : 'bg-[#fa9331]';
+          const textColor = isCorrective ? 'text-white' : 'text-gray-900';
+          const formattedDate = wo.request_time ? getWibDateTimeString(parseWibDate(wo.request_time)) : '-';
+          
+          const machineId = wo.asset_id || '-';
+          const machineName = wo.machine_name || 'Mesin Tanpa Nama';
+
+          const matchedAsset = assetMap[String(machineId).trim()];
+
+          const locationText = (matchedAsset && matchedAsset.area && matchedAsset.area !== '-') 
+                               ? matchedAsset.area 
+                               : getArea(machineId);
+
+          const lineText = (matchedAsset && matchedAsset.location && matchedAsset.location !== '-') 
+                           ? matchedAsset.location 
+                           : (wo.line || '-');
+
+          // MODIFIKASI: LOGIKA BARU UNTUK DOWNTIME STOPWATCH
+          let downtimeText = '-';
+          // Aturan: Corrective dihitung dari request_time, Preventive dihitung dari start_time
+          let startDowntime = (wo.type === 'CORRECTIVE') ? (wo.request_time || wo.date_created) : wo.start_time;
+          
+          if (startDowntime) {
+              downtimeText = `<span class="stopwatch font-mono tracking-widest text-[15px]" data-start="${startDowntime}">0 h 0 m 0 s</span>`;
+          }
+
+          const rowHtml = `
+            <tr class="border-b-[3px] border-white ${rowBg} ${textColor} text-xl text-center">
+                <td class="px-6 py-5 font-mono font-bold tracking-wider">${machineId}</td>
+                <td class="px-6 py-5 font-semibold text-left">${machineName}</td>
+                <td class="px-6 py-5 font-medium">${locationText}</td>
+                <td class="px-6 py-5 font-bold">${lineText}</td>
+                <td class="px-6 py-5 font-extrabold tracking-widest uppercase">${wo.type}</td>
+                <td class="px-6 py-5 font-semibold uppercase">${wo.status}</td>
+                <td class="px-6 py-5 font-medium">${formattedDate}</td>
+                <td class="px-6 py-5 font-extrabold text-white">${downtimeText}</td>
+            </tr>
+          `;
+          tableBody.insertAdjacentHTML('beforeend', rowHtml);
+        });
+        
+        // Memanggil manual stopwatch pada awal load data untuk menghindari jeda 1 detik angka 00:00:00
+        updateStopwatches();
+      } catch (err) {
+        console.error("Gagal memuat data dari database:", err);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+      
+      updateDateTime();
+      setInterval(updateDateTime, 1000);
+      
+      // Jalankan fungsi updateStopwatches setiap detik agar timer berjalan live
+      setInterval(updateStopwatches, 1000);
+      
+      loadLiveDashboard(); 
+      setInterval(loadLiveDashboard, 15000); 
+    });
+
+    function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'WorkOrder.html' && link.getAttribute('href') === 'WorkOrder.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+
+    function toggleSubmenu(id, element) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar.classList.contains('sidebar-collapsed')) { sidebar.classList.remove('sidebar-collapsed'); }
+    const submenu = document.getElementById(id);
+    const icon = element.querySelector('.dropdown-icon');
+    if (submenu.classList.contains('hidden')) {
+      submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)';
+    } else {
+      submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)';
+    }
+  }
+</script>
+<script src="gtranslate.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

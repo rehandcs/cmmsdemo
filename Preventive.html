@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preventive - Can Sport CMMS</title>
+  <script src="api-config.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @media (max-width: 767px) {
+      #sidebar { width: 18rem; }
+      main { padding: 1rem; }
+      main > div { margin-top: 0; }
+      main > div > br { display: none; }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+       /* Transisi halus untuk sidebar */
+    #sidebar { transition: width 0.3s ease; }
+    
+    /* Class saat ditutup (collapsed) */
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    
+    /* Sembunyikan submenu saat sidebar ditutup agar lebih rapi */
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+<main class="flex-1 overflow-y-auto bg-gray-50 p-8">
+      <div class="max-w-4xl w-full mx-auto mt-6">
+        <br><br><br><br>
+        <div class="text-center mb-10">
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-800 tracking-tight uppercase">PREVENTIVE MAINTENANCE</h1>
+          <p class="text-gray-500 mt-3 font-medium">Select the action form you want to process.</p>
+        </div>
+
+        <div id="action-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 transition-all duration-500">
+          
+          <a id="submit-link" href="SubmitPreventive.html" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-8 text-center cursor-pointer group hover:-translate-y-2 hover:shadow-xl hover:border-blue-300 transition-all duration-300">
+            <div class="w-24 h-24 mx-auto bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-6 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
+              <i class='bx bx-send text-5xl'></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors">Request Form</h2>
+            <p class="text-gray-500 text-sm leading-relaxed px-4">
+              Form to schedule and report routine preventive maintenance tasks. Record inspection categories, priority levels, and maintenance notes.
+            </p>
+          </a>
+
+          <a id="complete-link" href="CompletionPreventive.html" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-8 text-center cursor-pointer group hover:-translate-y-2 hover:shadow-xl hover:border-emerald-300 transition-all duration-300">
+            <div class="w-24 h-24 mx-auto bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
+              <i class='bx bx-check-shield text-5xl'></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-emerald-600 transition-colors">Completion Form</h2>
+            <p class="text-gray-500 text-sm leading-relaxed px-4">
+              Form to mark preventive maintenance tasks as completed. Record execution time, technician details, and actual maintenance outcomes.
+            </p>
+          </a>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleSubmenu(id, element) {
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector('.dropdown-icon');
+      if (submenu.classList.contains('hidden')) {
+        submenu.classList.remove('hidden'); submenu.classList.add('block');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        submenu.classList.remove('block'); submenu.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+            // 1. TAMPILKAN USER DINAMIS
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (userData) {
+          document.getElementById('header-user-name').innerText = userData.name;
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          const avatarEl = document.getElementById('header-avatar');
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+          link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) {
+            parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block');
+            parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)';
+          }
+        }
+      });
+    });
+
+  function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'Preventive.html' && link.getAttribute('href') === 'Preventive.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+
+    function toggleSubmenu(id, element) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar.classList.contains('sidebar-collapsed')) { sidebar.classList.remove('sidebar-collapsed'); }
+    const submenu = document.getElementById(id);
+    const icon = element.querySelector('.dropdown-icon');
+    if (submenu.classList.contains('hidden')) {
+      submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)';
+    } else {
+      submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)';
+    }
+  }
+  </script>
+
+  <script src="gtranslate.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

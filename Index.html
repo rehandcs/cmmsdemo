@@ -1,0 +1,609 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home - CMMS Dashboard</title>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="api-config.js"></script>
+  <script src="sidebar.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
+  
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+
+    @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    .animate-infinite-scroll { display: flex; animation: scroll 25s linear infinite; width: max-content; }
+    .animate-infinite-scroll:hover { animation-play-state: paused; }
+    .swiper-button-next-custom, .swiper-button-prev-custom { width: 40px; height: 40px; background-color: #1f2937; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.3s; z-index: 10; }
+    .swiper-button-next-custom:hover, .swiper-button-prev-custom:hover { background-color: #111827; }
+    .swiper-button-disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+<!-- 1. Overlay untuk Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- 2. Container Sidebar (Nanti diisi otomatis oleh JavaScript) -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+  
+  <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+  <div class="flex items-center space-x-4 text-sm">
+      <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200">
+          <div class="text-right">
+              <span id="header-user-name" class="block text-sm font-bold text-gray-800">Loading...</span>
+              <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">Loading...</span>
+          </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto bg-[#f8f9fa] text-gray-800 relative overflow-x-hidden">
+    
+    <div class="w-full flex justify-center border-b border-gray-200 bg-white/90 backdrop-blur-sm sticky top-0 z-30 pt-4">
+        <ul class="flex space-x-4 md:space-x-12 text-sm md:text-base font-semibold">
+            <li>
+                <button onclick="switchTab('cmms', this)" class="tab-btn pb-4 border-b-[3px] border-orange-500 text-orange-500 hover:text-orange-600 transition-colors">
+                    About CMMS
+                </button>
+            </li>
+            <li>
+                <button onclick="switchTab('aboutme', this)" class="tab-btn pb-4 border-b-[3px] border-transparent text-gray-500 hover:text-gray-800 transition-colors">
+                    About ME
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="max-w-[1400px] mx-auto flex flex-col relative pb-20 mt-8">
+      
+      <div id="tab-cmms" class="block">
+          <br><br>
+          <section class="flex flex-col lg:flex-row items-center justify-center px-4 lg:px-8 py-10 lg:py-16 shrink-0 overflow-hidden">
+            
+            <div class="lg:w-[45%] pr-0 lg:pr-12 z-10">
+              <div class="flex items-center space-x-2 text-lg text-gray-500 mb-6 font-large">
+                <span><strong class="text-gray-800">PT. Can Sports Industrial Indonesia </strong> </span>
+              </div>
+              
+              <h1 class="text-3xl lg:text-5xl font-semibold leading-[1.1] mb-6 text-gray-900">
+                 Computerized Maintenance Management  <span class="relative inline-block mt-2 text-orange-500">
+                  System
+                  <div class="absolute -bottom-2 left-0 w-full h-1 bg-orange-500 rounded-full"></div>
+                </span>
+              </h1>
+              
+              <p class="text-gray-500 text-lg lg:text-xl mb-10 leading-relaxed max-w-lg">
+                Software designed to centralize information and automate the entire maintenance process for company assets, machinery, and facilities.
+              </p>
+            </div>
+
+            <div class="lg:w-[55%] mt-16 lg:mt-0 relative w-full flex justify-center lg:justify-end z-10 overflow-hidden">
+              <!-- Swiper Container -->
+              <div class="swiper mySwiper relative w-full max-w-[650px] overflow-hidden rounded-xl shadow-2xl">
+                  <div class="swiper-wrapper">
+                      <!-- Slide 1 -->
+                      <div class="swiper-slide">
+                          <img src="https://res.cloudinary.com/bfvxjarw/image/upload/v1787799189/WhatsApp_Image_2026-08-19_at_15.24.54_j0ncmd.jpg" class="w-full h-[380px] md:h-[450px] object-cover" alt="Foto 1">
+                      </div>
+                      <!-- Slide 2 -->
+                      <div class="swiper-slide">
+                          <img src="https://res.cloudinary.com/bfvxjarw/image/upload/v1787799185/WhatsApp_Image_2026-08-19_at_15.24.55_6_l0nwgg.jpg" class="w-full h-[380px] md:h-[450px] object-cover" alt="Foto 2">
+                      </div>
+                      <!-- Slide 3 -->
+                      <div class="swiper-slide">
+                          <img src="https://res.cloudinary.com/bfvxjarw/image/upload/v1787799180/WhatsApp_Image_2026-08-19_at_15.24.55_8_htjnae.jpg" class="w-full h-[380px] md:h-[450px] object-cover" alt="Foto 3">
+                      </div>
+
+                      <div class="swiper-slide">
+                          <img src="https://res.cloudinary.com/bfvxjarw/image/upload/v1787799246/WhatsApp_Image_2026-08-19_at_15.24.55_5_h6grlz.jpg" class="w-full h-[380px] md:h-[450px] object-cover" alt="Foto 3">
+                      </div>
+                      <div class="swiper-slide">
+                          <img src="https://res.cloudinary.com/bfvxjarw/image/upload/v1787799188/WhatsApp_Image_2026-08-19_at_15.24.55_3_hqfn1u.jpg" class="w-full h-[380px] md:h-[450px] object-cover" alt="Foto 3">
+                      </div>
+                  </div>
+                  
+                  <!-- Navigation Buttons (Memanfaatkan custom class dari CSS Anda) -->
+                  <div class="swiper-button-next swiper-button-next-custom"><i class='bx bx-chevron-right text-2xl'></i></div>
+                  <div class="swiper-button-prev swiper-button-prev-custom"><i class='bx bx-chevron-left text-2xl'></i></div>
+                  
+                  <!-- Pagination -->
+                  <div class="swiper-pagination"></div>
+              </div>
+              
+              <!-- Script inisialisasi Swiper Carousel -->
+              <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                  var swiper = new Swiper(".mySwiper", {
+                    loop: true,
+                    autoplay: {
+                        delay: 3500,
+                        disableOnInteraction: false,
+                    },
+                    navigation: {
+                      nextEl: ".swiper-button-next",
+                      prevEl: ".swiper-button-prev",
+                    },
+                    pagination: {
+                      el: ".swiper-pagination",
+                      clickable: true,
+                    },
+                  });
+                });
+              </script>
+            </div>
+          </section>
+          
+          <br><br><br>
+    
+      </div> 
+
+      <div id="tab-aboutme" class="hidden px-4 md:px-8 py-10 w-full shrink-0">
+          
+          <div class="max-w-4xl mx-auto">
+              <div class="mb-8 text-center">
+                  <h3 class="text-2xl font-bold text-gray-800 relative inline-block">
+                      About Manufacturing Excelent Digitalization
+                      <div class="absolute -bottom-2 left-1/4 w-1/2 h-1 bg-orange-500 rounded-full"></div>
+                  </h3>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                   <div onclick="openFeatureModal('cmms')" class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4 group cursor-pointer">
+                      <div class="bg-orange-50 group-hover:bg-orange-500 transition-colors p-3 rounded-xl flex items-center justify-center">
+                          <i class='bx bx-desktop text-orange-500 group-hover:text-white text-2xl transition-colors'></i>
+                      </div>
+                      <span class="text-lg font-semibold text-gray-700 group-hover:text-orange-500 transition-colors">Computerized Maintenance Management System</span>
+                  </div>
+                  
+                  <div onclick="openFeatureModal('production_dashboard')" class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4 group cursor-pointer">
+                      <div class="bg-orange-50 group-hover:bg-orange-500 transition-colors p-3 rounded-xl flex items-center justify-center">
+                          <i class='bx bx-desktop text-orange-500 group-hover:text-white text-2xl transition-colors'></i>
+                      </div>
+                      <span class="text-lg font-semibold text-gray-700 group-hover:text-orange-500 transition-colors">Production Dashboard</span>
+                  </div>
+                  
+                  <div onclick="openFeatureModal('oee_dashboard')" class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4 group cursor-pointer">
+                      <div class="bg-orange-50 group-hover:bg-orange-500 transition-colors p-3 rounded-xl flex items-center justify-center">
+                          <i class='bx bx-bar-chart-alt-2 text-orange-500 group-hover:text-white text-2xl transition-colors'></i>
+                      </div>
+                      <span class="text-lg font-semibold text-gray-700 group-hover:text-orange-500 transition-colors">OEE Dashboard</span>
+                  </div>
+                  
+                  <div onclick="openFeatureModal('andon_system')" class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4 group cursor-pointer">
+                      <div class="bg-orange-50 group-hover:bg-orange-500 transition-colors p-3 rounded-xl flex items-center justify-center">
+                          <i class='bx bx-bell text-orange-500 group-hover:text-white text-2xl transition-colors'></i>
+                      </div>
+                      <span class="text-lg font-semibold text-gray-700 group-hover:text-orange-500 transition-colors">Andon System</span>
+                  </div>
+
+                  <div onclick="openFeatureModal('dashboard_mispacking')" class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4 group cursor-pointer">
+                      <div class="bg-orange-50 group-hover:bg-orange-500 transition-colors p-3 rounded-xl flex items-center justify-center">
+                          <i class='bx bx-error text-orange-500 group-hover:text-white text-2xl transition-colors'></i>
+                      </div>
+                      <span class="text-lg font-semibold text-gray-700 group-hover:text-orange-500 transition-colors">Mispacking Dashboard</span>
+                  </div>
+
+                  <div onclick="openFeatureModal('6s_report')" class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4 group cursor-pointer">
+                      <div class="bg-orange-50 group-hover:bg-orange-500 transition-colors p-3 rounded-xl flex items-center justify-center">
+                          <i class='bx bx-group text-orange-500 group-hover:text-white text-2xl transition-colors'></i>
+                      </div>
+                      <span class="text-lg font-semibold text-gray-700 group-hover:text-orange-500 transition-colors">Audit 6S Report</span>
+                  </div>
+
+              </div>
+          </div>
+      </div>
+    </div>
+    
+    <div onclick="toggleChat()" class="fixed bottom-6 right-8 bg-orange-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/40 cursor-pointer z-40 hover:bg-orange-600 hover:scale-105 transition-all">
+        <i class='bx bxs-message-rounded-dots text-3xl'></i>
+    </div>
+
+    <div id="chat-popup" class="fixed bottom-24 right-8 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl flex-col overflow-hidden z-50 hidden opacity-0 transition-all duration-300 transform translate-y-4 border border-gray-200">
+        <div class="bg-orange-500 text-white px-5 py-3 flex justify-between items-center shadow-sm z-10">
+            <div class="flex items-center gap-2">
+                <i class='bx bx-bot text-2xl'></i>
+                <div>
+                  <h3 class="font-bold leading-tight">AI Assistant</h3>
+                  <p class="text-[10px] text-orange-100">PT. Can Sports Industrial Indonesia</p>
+                </div>
+            </div>
+            <button onclick="toggleChat()" class="text-white hover:text-gray-200 transition-colors">
+                <i class='bx bx-x text-2xl'></i>
+            </button>
+        </div>
+        <div id="chat-box" class="p-4 overflow-y-auto bg-gray-50 flex flex-col space-y-4 h-[350px]">
+            <div class="bg-white border border-gray-200 text-gray-700 p-3 rounded-xl rounded-tl-sm self-start max-w-[85%] text-sm shadow-sm leading-relaxed">
+                Hello! I'm the AI Assistant at PT. Can Sport Industrial Indonesia. How can I help you today?
+            </div>
+        </div>
+        <div class="bg-white border-t border-gray-200 p-3 flex gap-2 items-center">
+            <input type="text" id="chat-input" placeholder="Ask Something..." class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" onkeypress="handleEnter(event)">
+            <button onclick="sendChatMessage()" class="bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-lg font-bold transition-colors flex items-center justify-center h-full">
+                <i class='bx bx-send text-xl'></i>
+            </button>
+        </div>
+    </div>
+  </main>
+</div>
+
+<div id="feature-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[60] backdrop-blur-sm opacity-0 transition-opacity duration-300">
+    <div id="feature-modal-box" class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-lg overflow-hidden transform scale-95 transition-transform duration-300">
+        <div id="fm-image-bg" class="h-40 w-full bg-gray-800 relative flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/40"></div>
+            <div class="relative z-10 flex flex-col items-center">
+                <div id="fm-icon" class="bg-orange-500 w-14 h-14 rounded-xl flex items-center justify-center shadow-lg mb-2">
+                    <i class='bx bx-info-circle text-white text-3xl'></i>
+                </div>
+                <h2 id="fm-title" class="text-2xl font-bold text-white uppercase tracking-wider">Title</h2>
+            </div>
+            <button onclick="closeFeatureModal()" class="absolute top-4 right-4 text-white bg-black/30 hover:bg-red-500 w-8 h-8 rounded-full flex items-center justify-center transition-colors z-20">
+                <i class='bx bx-x text-2xl'></i>
+            </button>
+        </div>
+        <div class="p-8 bg-white">
+            <p id="fm-desc" class="text-gray-600 text-base leading-relaxed text-center mb-6">Deskripsi fitur.</p>
+            <div class="flex justify-center">
+                <a id="fm-link" href="#" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-3 rounded-lg transition-colors shadow-md flex items-center">
+                    Go to the Page <i class='bx bx-right-arrow-alt text-2xl ml-2'></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+
+<script>
+  // Fungsi ini untuk menghapus sesi login dan data profil pengguna dari penyimpan lokal (localStorage) lalu mengarahkan pengguna kembali ke halaman login 
+  function handleLogout() {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('userData');
+      window.location.href = 'Login.html';
+  }
+
+  // Fungsi ini untuk beralih tampilan antar bagian ABOUT CMMS dan ABOUT ME
+  function switchTab(tabId, btnElement) {
+      document.getElementById('tab-cmms').classList.add('hidden');
+      document.getElementById('tab-cmms').classList.remove('block');
+      document.getElementById('tab-aboutme').classList.add('hidden');
+      document.getElementById('tab-aboutme').classList.remove('block');
+
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+      document.getElementById('tab-' + tabId).classList.add('block');
+
+      const buttons = document.querySelectorAll('.tab-btn');
+      buttons.forEach(btn => {
+          btn.classList.remove('border-orange-500', 'text-orange-500');
+          btn.classList.add('border-transparent', 'text-gray-500');
+      });
+      btnElement.classList.remove('border-transparent', 'text-gray-500');
+      btnElement.classList.add('border-orange-500', 'text-orange-500');
+  }
+
+  // Fungsi ini untuk menampilkan atau menyembunyikan item turunan pada navigasi sidebar ketika diklik 
+  function toggleSubmenu(id, element) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar.classList.contains('sidebar-collapsed')) { sidebar.classList.remove('sidebar-collapsed'); }
+    const submenu = document.getElementById(id);
+    const icon = element.querySelector('.dropdown-icon');
+    if (submenu.classList.contains('hidden')) {
+      submenu.classList.remove('hidden'); submenu.classList.add('block'); icon.style.transform = 'rotate(180deg)';
+    } else {
+      submenu.classList.remove('block'); submenu.classList.add('hidden'); icon.style.transform = 'rotate(0deg)';
+    }
+  }
+
+  // Fungsi ini untuk mengubah mode tampilan lebar sidebar pada mode desktop atau menampilkannya menggunakan overlay pada mobile 
+
+  const featureData = {
+  'schedule': { 
+    title: 'Schedule', 
+    icon: 'bx-calendar', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1Lx7OkxuUyZuJZJHv6XmXpz08USq86sED")', 
+    desc: 'The Schedule module is designed to plan and manage machine operating schedules.', 
+    link: 'Schedule.html' 
+  },
+  'workorder': { 
+    title: 'Work Order', 
+    icon: 'bx-book', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1Lx7OkxuUyZuJZJHv6XmXpz08USq86sED")', 
+    desc: 'Work Orders facilitate the tracking of the status of assets that require maintenance.', 
+    link: 'WorkOrder.html' 
+  },
+  'maintenance': { 
+    title: 'Maintenance', 
+    icon: 'bx-wrench', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1Lx7OkxuUyZuJZJHv6XmXpz08USq86sED")', 
+    desc: 'Form for adding a work order to perform corrective and preventive maintenance on an asset.', 
+    link: 'Preventive.html' 
+  },
+  'inventory': { 
+    title: 'Inventory', 
+    icon: 'bx-package', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1Lx7OkxuUyZuJZJHv6XmXpz08USq86sED")', 
+    desc: 'Accurately track the inflow and outflow of spare parts and manage assets, such as asset transfers and repair status.', 
+    link: 'DatabaseMaster.html' 
+  },
+  'reports': { 
+    title: 'Reports & Analytics', 
+    icon: 'bx-pie-chart-alt-2', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1Lx7OkxuUyZuJZJHv6XmXpz08USq86sED")', 
+    desc: 'OEE, MTTR, and MTBF report charts, tracking maintenance activities, monitoring the receipt and issuance of spare parts, and analyzing mechanical performance.', 
+    link: 'TrackingAssets.html' 
+  },
+  'cmms': { 
+    title: 'CMMS', 
+    icon: 'bx-desktop', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1fgAxHqSaXXmTSYdmNnnrSZiyqgagGA-l")', 
+    desc: 'Software designed to centralize information and automate the entire maintenance process for company assets, machinery, and facilities.', 
+    link: 'Login.html' 
+  },
+  'production_dashboard': { 
+    title: 'Production Dashboard', 
+    icon: 'bx-desktop', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1uSlM50NTMjxPwzyvDsbvE4h1q31W0Ufl")', 
+    desc: 'a visual representation of key performance indicators (KPIs) and metrics that are used to monitor and manage the production process in a manufacturing or production environment.', 
+    link: 'https://script.google.com/macros/s/AKfycbzaPlVFKNbnifMWGKegQiU9bBSZwPgHqHb8y3epjKsEYuk0I0BLnovHkvPzYR3Fl5oPpg/exec' 
+  },
+  'oee_dashboard': { 
+    title: 'OEE Dashboard', 
+    icon: 'bx-bar-chart-alt-2', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1Y4r1PScSiHvD-e7YfL3DW4RxRt5Wwe0N")', 
+    desc: 'Overall Equipment Effectiveness (OEE) is a crucial metric to measure the efficiency and productivity of production lines.', 
+    link: 'https://script.google.com/macros/s/AKfycbzgK6lW_m2B-SdYVblsZcCR_mdIZuF5grGkdA7v4w0nNE-kwvB4TIQIWVar0NYSyUe07Q/exec' 
+  },
+  'andon_system': { 
+    title: 'Andon System', 
+    icon: 'bx-bell', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/181x2jNJjpRv_ZXLdjQjo9B8uqejou--3")', 
+    desc: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', 
+    link: 'https://andonsystemcansports.web.app/' 
+  },
+  'dashboard_mispacking': { 
+    title: 'Mispacking Dashboard', 
+    icon: 'bx-error', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1HPMYNZcmWM2lHbOYDXsnMl3WYsHrhtxu")', 
+    desc: 'Dashboard mispacking refers to the incorrect or incomplete packaging of items.', 
+    link: 'https://script.google.com/macros/s/AKfycbyVO65MopgHBXXjXp03bSqklj6cBtJejcw16chlDUED7z7dnIprWegX1JzZd7JnB-Ha/exec' 
+  },
+  '6s_report': { 
+    title: 'Audit 6S Report', 
+    icon: 'bx-info-circle', 
+    bgImage: 'url("https://lh3.googleusercontent.com/d/1GVB2J8ybeoduadPUecE1k0xpKUUUCOFN")', 
+    desc: 'assesses an organization adherence to the 6S methodology, which is a systematic approach to improving workplace efficiency and productivity.', 
+    link: 'https://script.google.com/macros/s/AKfycbxEup8b7aGARx1vAUIdSSTR1Irkf-TWwIwBT_w7UxHW1aEP3Si_Tu--E7IoqdT84gme/exec' 
+  }
+};
+
+// Fungsi ini untuk membuka jendela pop up detail fitur dan memuat informasi konten secara dinamis objek Feature Data berdasarkan kata kunci 
+  function openFeatureModal(key) {
+      const data = featureData[key];
+      if(!data) return;
+      document.getElementById('fm-title').innerText = data.title;
+      document.getElementById('fm-icon').innerHTML = `<i class='bx ${data.icon} text-white text-3xl'></i>`;
+      document.getElementById('fm-image-bg').style.backgroundImage = data.bgImage;
+      document.getElementById('fm-image-bg').style.backgroundSize = 'cover';
+      document.getElementById('fm-desc').innerHTML = data.desc;
+      document.getElementById('fm-link').href = data.link;
+
+      const modal = document.getElementById('feature-modal');
+      const box = document.getElementById('feature-modal-box');
+      modal.classList.remove('hidden');
+      setTimeout(() => { modal.classList.remove('opacity-0'); box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+  }
+
+  // Fungsi ini untuk menutup jendela pop up modal fitur dengan menerapkan animasi menghilangkan dan mengecilkan skala sebelum benar-benar disembunyikan 
+  function closeFeatureModal() {
+      const modal = document.getElementById('feature-modal');
+      const box = document.getElementById('feature-modal-box');
+      modal.classList.add('opacity-0'); box.classList.remove('scale-100'); box.classList.add('scale-95');
+      setTimeout(() => { modal.classList.add('hidden'); }, 300);
+  }
+
+  // --- Chatbot Logic (RAG API) ---
+  let chatHistory = []; 
+
+  // Fungsi ini untuk membuka dan menutup antarmuka jendela pop up percakapan chatbot
+  function toggleChat() {
+      const popup = document.getElementById('chat-popup');
+      if (popup.classList.contains('hidden')) {
+          popup.classList.remove('hidden');
+          setTimeout(() => popup.classList.remove('opacity-0', 'translate-y-4'), 10);
+          document.getElementById('chat-input').focus(); 
+      } else {
+          popup.classList.add('opacity-0', 'translate-y-4');
+          setTimeout(() => popup.classList.add('hidden'), 300);
+      }
+  }
+
+  // Fungsi ini untuk mendeteksi ketika pengguna menekan tombol "Enter" pada papan ketik di dalam area input chat sehingga pesan otomatis terkirim
+  function handleEnter(e) {
+      if (e.key === 'Enter') sendChatMessage();
+  }
+  
+  const API_BASE = window.CMMS_API_BASE || window.location.origin;
+  const API_URL = `${API_BASE}/api/rag/chat`;
+
+  // Fungsi ini untuk megirimkan pesan obrolan pengguna ke server AI, memproses animasi antarmuka "Sedang Berpikir", dan menampilkan balasan dari sistem 
+  async function sendChatMessage() {
+    const existingLoader = document.getElementById('typing-indicator');
+    if (existingLoader) existingLoader.remove();
+
+    const inputElement = document.getElementById('chat-input');
+    const sendButton = document.querySelector('button[onclick="sendChatMessage()"]');
+    const message = inputElement.value.trim();
+    if (!message) return;
+
+    inputElement.disabled = true;
+    sendButton.disabled = true;
+    inputElement.placeholder = "AI sedang berpikir...";
+    sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+    appendMessage(message, 'user');
+    inputElement.value = '';
+    chatHistory.push({ role: "user", content: message });
+
+    const typingIndicatorHtml = `
+      <div class="flex space-x-1 items-center h-4 py-1">
+        <div class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+        <div class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+        <div class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+      </div>`;
+    appendMessage(typingIndicatorHtml, 'ai', true);
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+            query: message,
+            conversationHistory: chatHistory.slice(0, -1)
+            })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success || !data.response) {
+          throw new Error(data.error || `Server chatbot merespons dengan status ${response.status}.`);
+        }
+
+        const loader = document.getElementById('typing-indicator');
+        if (loader) loader.remove();
+
+        if (data.success && data.response) {
+          const aiReply = data.response;
+            appendMessage(aiReply, 'ai');
+            chatHistory.push({ role: "assistant", content: aiReply });
+          if (data.sources && data.sources.length > 0) {
+            const sourceNames = [...new Set(data.sources.map(source => source.source))];
+            appendMessage(`Sumber: ${sourceNames.join(', ')}`, 'ai');
+          }
+        }
+    } catch (error) {
+        const loader = document.getElementById('typing-indicator');
+        if (loader) loader.remove();
+        const detail = error instanceof Error ? error.message : String(error);
+        const message = detail === 'Failed to fetch' || detail.includes('NetworkError')
+          ? 'Tidak dapat terhubung ke server CMMS. Pastikan backend berjalan, lalu coba lagi.'
+          : `Chatbot gagal memproses pesan: ${detail}`;
+        appendMessage(message, 'ai');
+        chatHistory.pop();
+    } finally {
+        inputElement.disabled = false;
+        sendButton.disabled = false;
+        inputElement.placeholder = "Tanya sesuatu...";
+        sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        inputElement.focus();
+    }
+  }
+
+  // Fungsi ini untuk membuat dan menyuntikan elemen HTML baris pesan baru ke dalam kotak obrolan antarmuka berdasarkan pihak pengirim 
+  function appendMessage(text, sender, isHtml = false) {
+    const chatBox = document.getElementById('chat-box');
+    const msgDiv = document.createElement('div');
+    const id = isHtml ? 'typing-indicator' : 'msg-' + Date.now();
+    msgDiv.id = id;
+
+    if (sender === 'user') {
+        msgDiv.className = "bg-orange-500 text-white p-3 rounded-xl rounded-tr-sm self-end max-w-[85%] text-sm shadow-sm";
+        msgDiv.innerText = text;
+    } else {
+        if (isHtml) {
+            msgDiv.className = "self-start p-2";
+            msgDiv.innerHTML = text;
+        } else {
+            msgDiv.className = "bg-white border border-gray-200 text-gray-700 p-3 rounded-xl rounded-tl-sm self-start max-w-[85%] text-sm shadow-sm leading-relaxed";
+            const escapedText = String(text).replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+            let parsedText = escapedText
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/^\s*\*\s+(.*)$/gm, '<li style="margin-left: 20px;">$1</li>')
+                .replace(/\n/g, '<br>');
+            msgDiv.innerHTML = parsedText;
+        }
+    }
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return id; 
+  }
+  // --------------------------------
+
+  // Fungsi ini untuk memanggil file komponen eksternal sidebar.html
+  function loadSidebar() {
+      fetch('sidebar.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('sidebar-container').innerHTML = data;
+          setActiveMenu();
+        });
+    }
+
+    // Fungsi ini untuk memeriksa nama halaman saat ini dan menambahkan sorotan warna pada elemen navigasi sidebar yang sesuai dengan halaman tersebut
+    function setActiveMenu() {
+      let path = window.location.pathname.split("/").pop();
+      if (path === '' || path === '/') path = 'Index.html';
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        if (link.getAttribute('href') === path || (path === 'AssetManagement.html' && link.getAttribute('href') === 'AssetManagement.html')) {
+          link.classList.remove('text-gray-600', 'hover:bg-gray-50'); link.classList.add('bg-orange-500', 'text-white');
+          const parentSubmenu = link.closest('[id^="submenu-"]');
+          if (parentSubmenu) { parentSubmenu.classList.remove('hidden'); parentSubmenu.classList.add('block'); parentSubmenu.previousElementSibling.querySelector('.dropdown-icon').style.transform = 'rotate(180deg)'; }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSidebar();
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      
+      // Jika data ditemukan, masukkan ke dalam HTML
+      if (userData) {
+          // Menampilkan Nama
+          document.getElementById('header-user-name').innerText = userData.name;
+          
+          // Menampilkan Role (jika kosong, default ke 'User')
+          document.getElementById('header-user-role').innerText = userData.role || 'User';
+          
+          // Menampilkan Foto Profil
+          document.getElementById('header-avatar').src = userData.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=f97316&color=fff&bold=true`;
+      }
+      fetchData(); 
+    });
+</script>
+<script src="gtranslate.js"></script>
+<script src="aiassistant.js"></script>
+<script src="sidebar.js"></script>
+</body>
+</html>

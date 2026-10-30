@@ -1,0 +1,315 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pengaturan Notifikasi Laporan WA</title>
+  <script type="module" src="firebase-config.js"></script>
+  <script src="api-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
+    .sidebar-collapsed { width: 5rem !important; }
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .dropdown-icon { display: none !important; }
+    .sidebar-collapsed .header-sidebar { justify-content: center !important; padding: 0 !important; }
+    .sidebar-collapsed .sidebar-link,
+    .sidebar-collapsed .submenu-trigger { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .submenu-trigger > div { justify-content: center !important; width: 100%; }
+    .sidebar-collapsed .bx { margin-right: 0 !important; }
+    .sidebar-collapsed [id^="submenu-"] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-700 font-sans h-screen flex overflow-hidden relative">
+
+  <!-- Overlay Mobile -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+  <!-- Container Sidebar Eksternal -->
+  <div id="sidebar-container" class="z-40"></div>
+
+  <div class="flex-1 flex flex-col h-screen min-w-0 w-full relative">
+    
+    <!-- Header Topbar -->
+    <header class="h-14 bg-white border-b border-gray-200 flex justify-between md:justify-end items-center px-4 md:px-6 shrink-0 z-10 shadow-sm">
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-orange-500 focus:outline-none">
+        <i class='bx bx-menu text-2xl'></i>
+      </button>
+
+      <div class="flex items-center space-x-4 text-sm">
+        <div class="flex items-center space-x-3">
+          <img id="header-avatar" src="https://ui-avatars.com/api/?name=Admin&background=f97316&color=fff&bold=true" alt="Profile" class="w-8 h-8 rounded-full shadow-sm border border-gray-200 object-cover">
+          <div class="text-right">
+            <span id="header-user-name" class="block text-sm font-bold text-gray-800">Admin</span>
+            <span id="header-user-role" class="block text-[10px] text-gray-500 uppercase">User</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-[#f8f9fa] text-gray-800 relative overflow-x-hidden">
+        
+        <!-- Wrapper Utama Konten -->
+        <div class="max-w-[1400px] mx-auto p-4 md:p-8">
+            
+            <header class="mb-8">
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Pengaturan Notifikasi WA</h2>
+                <p class="text-gray-500 mt-1">Atur jadwal pengiriman laporan otomatis melalui WhatsApp.</p>
+            </header>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+                <div class="p-6 border-b border-gray-100 bg-white">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class='bx bx-calendar-plus text-xl mr-2 text-orange-500'></i> Buat Jadwal Baru
+                    </h3>
+                </div>
+                
+                <form id="notificationForm" class="p-6 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Jenis Laporan -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Laporan</label>
+                            <div class="relative">
+                                <select id="reportType" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow appearance-none bg-white">
+                                    <option value="sparepart">Laporan Sparepart</option>
+                                    <option value="workorder">Laporan Work Order</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                    <i class='bx bx-chevron-down text-xl'></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Laporan Bulan -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Data Laporan Untuk Bulan</label>
+                            <div class="relative">
+                                <select id="reportMonth" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow appearance-none bg-white">
+                                    <option value="current">Bulan Berjalan (Saat Ini)</option>
+                                    <option value="previous">Bulan Sebelumnya</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                    <i class='bx bx-chevron-down text-xl'></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jadwal Pengiriman (Hari) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Kirim Setiap</label>
+                            <div class="relative">
+                                <select id="scheduleDay" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow appearance-none bg-white">
+                                    <option value="daily">Setiap Hari</option>
+                                    <option value="monday">Setiap Hari Senin</option>
+                                    <option value="friday">Setiap Hari Jumat</option>
+                                    <option value="end_of_month">Akhir Bulan</option>
+                                    <option value="start_of_month">Awal Bulan (Tanggal 1)</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                    <i class='bx bx-chevron-down text-xl'></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jadwal Pengiriman (Waktu) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Jam Pengiriman</label>
+                            <div class="relative">
+                                <input type="time" id="scheduleTime" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow bg-white" value="08:00">
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                    <i class='bx bx-time text-xl'></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Nomor WA Tujuan -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nomor WhatsApp Tujuan (Pisahkan koma)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class='bx bxl-whatsapp text-gray-400 text-xl'></i>
+                                </div>
+                                <input type="text" id="targetNumbers" placeholder="Contoh: 08123456789, 08987654321" class="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow bg-white">
+                            </div>
+                        </div>
+                        
+                        <!-- Pesan Tambahan -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Pesan Pengantar Tambahan (Opsional)</label>
+                            <textarea id="additionalMessage" rows="3" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow bg-white" placeholder="Halo tim, berikut adalah lampiran laporan..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4">
+                        <button type="button" class="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 mr-3 transition-colors font-medium">
+                            Batal
+                        </button>
+                        <button type="submit" class="px-6 py-2.5 bg-orange-500 text-white rounded-lg shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors font-medium flex items-center">
+                            <i class='bx bx-save mr-2'></i> Simpan Jadwal
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Daftar Jadwal Aktif -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-6 border-b border-gray-100 bg-white">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class='bx bx-list-ul text-xl mr-2 text-orange-500'></i> Jadwal Notifikasi Aktif
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-sm border-b border-gray-200">
+                                <th class="py-3 px-6 font-semibold">Jenis Laporan</th>
+                                <th class="py-3 px-6 font-semibold">Jadwal</th>
+                                <th class="py-3 px-6 font-semibold">Waktu</th>
+                                <th class="py-3 px-6 font-semibold">Penerima</th>
+                                <th class="py-3 px-6 font-semibold">Status</th>
+                                <th class="py-3 px-6 font-semibold text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleTableBody" class="divide-y divide-gray-100 text-sm">
+                            <!-- Data akan dimuat dari database melalui JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+  </div>
+
+  <script>
+      const API_URL = API_CONFIG.BASE_URL + '/api/wa-notifications';
+
+      // Load data dari backend
+      async function loadNotifications() {
+          try {
+              const res = await fetch(API_URL);
+              const data = await res.json();
+              const tbody = document.getElementById('scheduleTableBody');
+              tbody.innerHTML = '';
+              
+              data.forEach(item => {
+                  const tr = document.createElement('tr');
+                  tr.className = 'hover:bg-gray-50 transition-colors';
+                  const reportName = item.report_type === 'sparepart' ? 'Laporan Sparepart' : 'Laporan Work Order';
+                  const icon = item.report_type === 'sparepart' ? 'bx-wrench' : 'bx-task';
+                  
+                  tr.innerHTML = `
+                      <td class="py-4 px-6 font-medium text-gray-900 flex items-center">
+                          <i class='bx ${icon} text-gray-400 mr-2 text-lg'></i> ${reportName} (${item.report_month})
+                      </td>
+                      <td class="py-4 px-6 text-gray-600">${item.schedule_day}</td>
+                      <td class="py-4 px-6 text-gray-600">${item.schedule_time}</td>
+                      <td class="py-4 px-6 text-gray-600">${item.target_numbers}</td>
+                      <td class="py-4 px-6">
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ${item.is_active ? 'Aktif' : 'Non-Aktif'}
+                          </span>
+                      </td>
+                      <td class="py-4 px-6 text-right">
+                          <button onclick="deleteNotification(${item.id})" class="text-red-500 hover:text-red-700 transition-colors" title="Hapus">
+                              <i class='bx bx-trash text-lg'></i>
+                          </button>
+                      </td>
+                  `;
+                  tbody.appendChild(tr);
+              });
+          } catch (err) {
+              console.error("Gagal memuat jadwal", err);
+          }
+      }
+
+      // Submit Form
+      document.getElementById('notificationForm').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          const payload = {
+              reportType: document.getElementById('reportType').value,
+              reportMonth: document.getElementById('reportMonth').value,
+              scheduleDay: document.getElementById('scheduleDay').value,
+              scheduleTime: document.getElementById('scheduleTime').value,
+              targetNumbers: document.getElementById('targetNumbers').value,
+              additionalMessage: document.getElementById('additionalMessage').value
+          };
+          
+          try {
+              const res = await fetch(API_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+              });
+              if(res.ok) {
+                  alert('Jadwal notifikasi berhasil disimpan!');
+                  document.getElementById('notificationForm').reset();
+                  loadNotifications();
+              } else {
+                  alert('Gagal menyimpan jadwal!');
+              }
+          } catch (err) {
+              console.error(err);
+              alert('Terjadi kesalahan pada server');
+          }
+      });
+
+      // Hapus data
+      async function deleteNotification(id) {
+          if(!confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return;
+          try {
+              const res = await fetch(API_URL + '/' + id, { method: 'DELETE' });
+              if(res.ok) {
+                  loadNotifications();
+              } else {
+                  alert('Gagal menghapus!');
+              }
+          } catch (err) {
+              console.error(err);
+          }
+      }
+
+      // Load Sidebar
+      function loadSidebar() {
+          fetch('sidebar.html')
+            .then(res => res.text())
+            .then(data => {
+                document.getElementById('sidebar-container').innerHTML = data;
+                setActiveMenu();
+            }).catch(err => console.error("Error loading sidebar:", err));
+      }
+
+      function setActiveMenu() {
+          const sidebarLinks = document.querySelectorAll('.sidebar-link');
+          sidebarLinks.forEach(link => {
+              if (link.getAttribute('href') === 'notifikasi.html') {
+                  link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+                  link.classList.add('bg-orange-500', 'text-white');
+              }
+          });
+      }
+
+      // Init Load
+      document.addEventListener('DOMContentLoaded', () => {
+          loadSidebar();
+          const userData = JSON.parse(localStorage.getItem('userData'));
+          if (userData) {
+              if (document.getElementById('header-user-name')) document.getElementById('header-user-name').innerText = userData.name;
+              if (document.getElementById('header-user-role')) document.getElementById('header-user-role').innerText = userData.role || 'User';
+              if (document.getElementById('header-avatar') && userData.profile_picture) document.getElementById('header-avatar').src = userData.profile_picture;
+          }
+          loadNotifications();
+      });
+  </script>
+  <script src="sidebar.js"></script>
+</body>
+</html>
